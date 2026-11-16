@@ -283,10 +283,13 @@ def tu_kiem_tra() -> int:
             loi += 1
             print(f"SAI: {ten}")
 
-    that = doc_header(DANG_CHAY)
-    kd(that["kieu_o"] == 1 and that["so_o"] > 100000,
-       f"đọc được header tệp đang chạy ({mo_ta(that)})")
-    kd(kiem_header(that, None) == [], "tệp đang chạy tự nó đạt mọi điều kiện")
+    # Mẫu một tệp lành, viết thẳng ra đây chứ không đọc từ đĩa: bản sao kho
+    # vừa clone về CHƯA có data/, mà self-check thì phải chạy được ở mọi nơi.
+    that = {"so_o": 415762, "so_muc": 123435, "kieu_o": 1,
+            "minzoom": 0, "maxzoom": 14,
+            "bounds": [102.0959, 7.3822, 114.6423, 23.4021],
+            "kich_thuoc": 319530512}
+    kd(kiem_header(that, None) == [], "một tệp lành thì đạt mọi điều kiện")
     kd(kiem_header(that, that) == [], "so chính nó với chính nó thì không báo lỗi")
 
     # Các kiểu hỏng phải BẮT được. Đây là lý do tồn tại của cả tệp này: đổi
@@ -328,6 +331,16 @@ def tu_kiem_tra() -> int:
         kd(False, "từ chối tệp không phải PMTiles")
     except ValueError:
         kd(True, "từ chối tệp không phải PMTiles")
+
+    # Có tệp thật thì kiểm luôn; không có cũng không sao — kho vừa clone về
+    # chưa dựng ô bao giờ.
+    if DANG_CHAY.is_file():
+        thuc = doc_header(DANG_CHAY)
+        kd(thuc["kieu_o"] == 1 and thuc["so_o"] > 100000,
+           f"đọc được header tệp đang chạy ({mo_ta(thuc)})")
+        kd(kiem_header(thuc, None) == [], "tệp đang chạy đạt mọi điều kiện")
+    else:
+        print(f"bỏ qua: chưa có {DANG_CHAY.name}, chỉ kiểm phần logic")
 
     print("Tự kiểm tra: tất cả đúng" if loi == 0 else f"Tự kiểm tra: {loi} lỗi")
     return loi
