@@ -47,7 +47,7 @@ if hasattr(sys.stdout, "reconfigure"):
 NGUON_O = "pmtiles:///tiles/vietnam.pmtiles"
 # Phải khớp maxzoom thật của data/tiles/vietnam.pmtiles. Sai số này là bản đồ
 # trắng ở zoom cao mà không một dòng lỗi — xem chú thích trong dung().
-MAXZOOM_O = 14
+MAXZOOM_O = 16
 NGUON_THE_GIOI = "pmtiles:///tiles/the-gioi.pmtiles"
 # Phải khớp MAXZOOM trong scripts/dung-o-the-gioi.py.
 MAXZOOM_THE_GIOI = 6
@@ -133,6 +133,127 @@ def uu_tien_tieng_viet(s: dict) -> int:
             l["layout"]["text-field"] = json.loads(json.dumps(TEN_VIET))
             dem += 1
     return dem
+
+
+# Màu theo nhóm POI, lấy tinh thần từ bản đồ thương mại: ăn uống cam, y tế
+# đỏ, mua sắm xanh dương, tài chính tím, giáo dục xanh lá, giao thông lam.
+# `class` là trường của schema OpenMapTiles, không phải ta tự đặt.
+MAU_POI = [
+    (["restaurant", "fast_food", "cafe", "bar", "ice_cream", "bakery"], "#e8701a"),
+    (["pharmacy", "hospital", "doctors", "clinic", "dentist", "veterinary"], "#d9353a"),
+    (["bank", "atm", "bureau_de_change"], "#8257c7"),
+    (["shop", "grocery", "clothing_store", "department_store", "convenience",
+      "supermarket", "alcohol_shop", "furniture", "hardware"], "#2d79c7"),
+    (["school", "college", "library", "kindergarten"], "#3f9d4a"),
+    (["bus", "railway", "airport", "aerodrome", "ferry_terminal"], "#1b8f9b"),
+    (["park", "garden", "pitch", "stadium", "swimming_pool"], "#4f9e3f"),
+    (["lodging", "hotel"], "#c7418f"),
+    (["fuel", "car_repair", "parking"], "#5a6b78"),
+    (["place_of_worship", "cemetery"], "#8a6d3b"),
+    (["police", "town_hall", "fire_station", "post", "government"], "#3b6ea8"),
+]
+MAU_POI_KHAC = "#7b7f87"
+
+
+def bieu_thuc_mau_poi(nhat: bool) -> list:
+    """Biểu thức `match` đổi `class` thành màu. `nhat`=True cho nền badge."""
+    bt: list = ["match", ["get", "class"]]
+    for nhom, mau in MAU_POI:
+        bt.append(nhom)
+        bt.append(lam_nhat(mau) if nhat else mau)
+    bt.append(lam_nhat(MAU_POI_KHAC) if nhat else MAU_POI_KHAC)
+    return bt
+
+
+def lam_nhat(mau: str) -> str:
+    """Trộn màu với trắng theo tỉ lệ 1:4 — ra nền đủ nhạt để icon sẫm đọc được."""
+    r, g, b = (int(mau[i:i + 2], 16) for i in (1, 3, 5))
+    return "#%02x%02x%02x" % tuple(round(v + (255 - v) * 0.78) for v in (r, g, b))
+
+
+def lop_poi() -> list[dict]:
+    """Badge tròn + icon + tên bên dưới, thay cho ba lớp poi-level của style gốc.
+
+    Vì sao nền NHẠT mà không phải nền đậm chữ trắng như bản đồ thương mại:
+    sprite của ta có 103 icon và KHÔNG cái nào là SDF (`sdf: false`), nên
+    MapLibre không tô lại màu glyph được — icon luôn giữ màu sẫm gốc. Đặt
+    icon sẫm lên nền đậm thì không đọc nổi. Muốn đúng kiểu chữ trắng trên nền
+    đậm thì phải dựng lại sprite dạng SDF, đó là việc riêng.
+    """
+    # Lọc theo HẠNG, tăng dần theo zoom. Style gốc làm việc này bằng ba lớp
+    # riêng (poi-level-1/2/3); gộp lại một biểu thức thì chỉ còn một lớp mà
+    # vẫn giữ nguyên cách thưa dần. Không lọc thì z17 hiện hàng trăm badge
+    # chồng lên nhau, nhãn bị nuốt gần hết vì va chạm.
+    co_ten = ["all",
+              ["==", ["geometry-type"], "Point"],
+              ["has", "name"],
+              ["<=", ["coalesce", ["get", "rank"], 0],
+               ["step", ["zoom"], 14, 15, 24, 16, 60, 17, 1000]]]
+    return [
+        {
+            "id": "poi-badge",
+            "type": "circle",
+            "source": "openmaptiles",
+            "source-layer": "poi",
+            "minzoom": 14,
+            "filter": co_ten,
+            "paint": {
+                "circle-color": bieu_thuc_mau_poi(True),
+                "circle-stroke-color": bieu_thuc_mau_poi(False),
+                "circle-stroke-width": 1.6,
+                "circle-radius": ["interpolate", ["linear"], ["zoom"],
+                                  14, 5, 16, 7.5, 18, 9],
+                "circle-opacity": 0.95,
+            },
+        },
+        {
+            "id": "poi-nhan",
+            "type": "symbol",
+            "source": "openmaptiles",
+            "source-layer": "poi",
+            "minzoom": 14,
+            "filter": co_ten,
+            "layout": {
+                "icon-image": ["concat", ["get", "class"], "_11"],
+                "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.75, 18, 1],
+                # Icon thiếu thì vẫn phải hiện tên, không bỏ cả nhãn.
+                "icon-optional": True,
+                "text-field": TEN_VIET,
+                "text-font": ["Noto Sans Regular"],
+                "text-anchor": "top",
+                "text-offset": [0, 0.85],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10, 18, 12],
+                "text-max-width": 7,
+                "text-padding": 3,
+                "text-optional": True,
+            },
+            "paint": {
+                "text-color": "#3f4349",
+                "text-halo-color": "#ffffff",
+                "text-halo-width": 1.5,
+            },
+        },
+    ]
+
+
+def thay_lop_poi(s: dict) -> int:
+    """Bỏ ba lớp poi-level-* của style gốc, chèn badge vào đúng chỗ cũ.
+
+    Chèn ĐÚNG VỊ TRÍ CŨ chứ không nối vào cuối: nối vào cuối thì POI vẽ đè
+    lên cả lớp chủ quyền.
+    """
+    vi_tri = None
+    con_lai = []
+    for l in s["layers"]:
+        if l["id"].startswith("poi-level-"):
+            if vi_tri is None:
+                vi_tri = len(con_lai)
+            continue
+        con_lai.append(l)
+    if vi_tri is None:
+        return 0
+    s["layers"] = con_lai[:vi_tri] + lop_poi() + con_lai[vi_tri:]
+    return 1
 
 
 def lop_the_gioi() -> list[dict]:
@@ -225,6 +346,7 @@ def dung(goc: dict, chu_quyen: dict | None,
                                  "minzoom": 0, "maxzoom": MAXZOOM_O}
 
     uu_tien_tieng_viet(s)
+    thay_lop_poi(s)
 
     # Nền thế giới: chèn NGAY SAU `background`, tức dưới mọi lớp Việt Nam.
     # Thứ tự quan trọng — đặt lên trên thì nó che mất bản đồ chi tiết.
@@ -291,6 +413,27 @@ def tu_kiem_tra() -> int:
     # Không có dữ liệu chủ quyền thì KHÔNG được âm thầm sinh style trống lớp.
     ids = [l["id"] for l in s["layers"]]
     kd("chu-quyen-vung" not in ids, "thiếu dữ liệu chủ quyền thì không bịa lớp ra")
+
+    # POI: badge phải thay đúng chỗ ba lớp poi-level-*, và phải nằm TRƯỚC lớp
+    # chủ quyền. Nối vào cuối là POI vẽ đè lên tên đảo.
+    gia3 = {"version": 8, "sources": {}, "layers": [
+        {"id": "duong", "type": "line"},
+        {"id": "poi-level-1", "type": "symbol"},
+        {"id": "poi-level-2", "type": "symbol"},
+        {"id": "poi-level-3", "type": "symbol"},
+        {"id": "nhan-cuoi", "type": "symbol"},
+    ]}
+    thay_lop_poi(gia3)
+    ids3 = [l["id"] for l in gia3["layers"]]
+    kd(ids3 == ["duong", "poi-badge", "poi-nhan", "nhan-cuoi"],
+       "badge POI thay đúng chỗ ba lớp poi-level, giữ nguyên thứ tự quanh nó")
+    kd(not any(l["id"].startswith("poi-level") for l in s["layers"]),
+       "style thật không còn lớp poi-level-* cũ")
+    ten_lop = [l["id"] for l in s["layers"]]
+    kd(ten_lop.index("poi-badge") < ten_lop.index("chu-quyen-vung"),
+       "POI nằm dưới lớp chủ quyền") if "chu-quyen-vung" in ten_lop else None
+    kd(lam_nhat("#d9353a") != "#d9353a" and lam_nhat("#ffffff") == "#ffffff",
+       "làm nhạt màu đúng hướng, trắng thì giữ trắng")
 
     # Nhãn: không được còn `nonlatin` ở bất cứ đâu. Còn một chỗ là TileServer
     # GL có thể 500 cả ô, và bản đồ có thể in tên Trung Quốc ở Biển Đông.

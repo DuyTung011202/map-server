@@ -311,9 +311,11 @@ nhưng đừng dựa vào đó.
 | **1b** | Lớp chủ quyền trong style JSON | 0.5–1 ngày | **XONG** 16/11/2026 |
 | **1c** | UI demo | 0.5–1 ngày | **XONG** 16/11/2026 |
 | **3** | Dựng ô địa hình + độ dốc **trong kho này**, phủ cả tỉnh, phục vụ qua compose | 1 ngày | **XONG** 16/11/2026 |
-| **5** | `update-osm.sh` + blue/green đổi symlink | 1 ngày | Tiếp theo |
-| **4** | TiTiler + route `/cog/*` | 0.5 ngày | — |
-| **6** | Photon (tìm địa chỉ) | 1–1.5 ngày | — |
+| **5** | `capnhat-osm.py` + blue/green đổi tên tệp | 1 ngày | **XONG** 16/11/2026 |
+| **4** | TiTiler + route `/cog/*` | 0.5 ngày | **Hoãn** — kho chưa có ảnh COG nào, dựng dịch vụ không ai gọi |
+| **6** | Photon (tìm địa chỉ), Goong làm lớp phụ | 1–1.5 ngày | Tiếp theo. Ước 1–1.5 ngày có vẻ THIẾU: Photon cần chỉ mục dựng sẵn, bản chính thức chỉ có cả hành tinh |
+| **7** | Nền thế giới + tên nước + Việt Nam nổi bật | 0.5 ngày | **XONG** 16/11/2026 |
+| **8** | Ô tới z16, badge POI kiểu bản đồ thương mại | 0.5 ngày | **XONG** 16/11/2026 |
 
 **Còn lại: 3.5–4 ngày.** Không mục nào chờ kho khác, chờ máy chủ, hay chờ người
 khác quyết.

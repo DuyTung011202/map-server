@@ -49,6 +49,9 @@ MAY_CHU = "http://127.0.0.1:8088"
 O_KIEM = (12, 3253, 1812)   # Hoa Lư — cùng ô mà cauhinh.js dùng để thử nguồn
 RAM = "6g"
 
+# Mức zoom sâu nhất khi dựng. Planetiler cho tối đa 16.
+MAXZOOM_DUNG = 16
+
 # Ngưỡng co lại chấp nhận được. OSM có thể mất dữ liệu thật (ai đó xoá nhầm
 # một vùng), nên tệp mới nhỏ hơn hẳn là dấu hiệu phải dừng, không phải chuyện
 # bình thường.
@@ -105,6 +108,11 @@ def lenh_planetiler() -> list[str]:
     """
     return ["java", f"-Xmx{RAM}", "-jar", str(PLANETILER),
             "--download", "--refresh-sources", "--area=vietnam",
+            # z16 là mức sâu nhất Planetiler dựng được. Để mặc định z14 thì ở
+            # mức đường phố chỉ còn cách phóng to ô z14 ra — ngõ ngách và nhà
+            # bị đơn giản hoá mất. Đây là khác biệt dễ thấy nhất so với bản
+            # đồ thương mại.
+            f"--maxzoom={MAXZOOM_DUNG}",
             # Mặc định 30 giây là quá ngắn cho nguồn phụ trên GitHub: đã ném
             # TimeoutException ngay ở bước HỎI KÍCH THƯỚC tệp, chưa tải byte
             # nào. Hỏng ở đây thì không đụng gì tới bản đang chạy, nhưng việc

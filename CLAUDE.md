@@ -17,6 +17,8 @@ python scripts/dung-o-ve-tinh.py --chi-tim   # chỉ xem chọn được cảnh 
 python scripts/capnhat-osm.py       # dựng lại ô nền từ OSM mới rồi đổi sang (blue/green)
 python scripts/capnhat-osm.py --chi-kiem     # kiểm tệp đang phục vụ, không dựng
 python scripts/capnhat-osm.py --quay-lai     # trả về bản trước
+python scripts/dung-ten-nuoc.py     # tên nước + vùng VN từ Natural Earth
+python scripts/dung-o-the-gioi.py   # nền thế giới z0-6 (zoom ra không bị trắng)
 python scripts/chay-demo.py         # máy chủ dev http://localhost:8080 (ô bản đồ GIẢ)
 python scripts/chay-demo.py 9000    # đổi cổng
 
@@ -37,6 +39,8 @@ python scripts/chay-demo.py   --self-check   # mã hoá terrarium, phạm vi ô,
 python scripts/dung-o-dia-hinh.py --self-check  # mã hoá hàng loạt, nội suy, góc dốc, bảng màu
 python scripts/dung-o-ve-tinh.py  --self-check  # vùng phủ khớp ô địa hình, ghi công
 python scripts/capnhat-osm.py     --self-check  # bắt được tệp PMTiles hỏng/co/tụt zoom
+python scripts/dung-o-the-gioi.py --self-check  # bắt được tệp quên --bounds, maxzoom quá sâu
+python scripts/dung-ten-nuoc.py   --self-check  # đọc WKB, tên nước tiếng Việt
 python scripts/qgis-inventory.py --self-check
 http://localhost:8080/?self-check            # assert của kiem-o.js, kết quả ở console
 ```
