@@ -82,6 +82,11 @@ Ba quyết định định hình mọi thứ:
 Trang demo cố tình **không** có nghiệp vụ: không đọc dữ liệu theo xã, không
 đăng nhập, không vẽ/sửa. Nó là **bộ kiểm tra chạy được** của máy chủ.
 
+**Đây là máy chủ dùng THẬT, và mục đích chính là để trang web khác nhúng
+vào.** Không phải bản thử nghiệm — đừng dừng ở mức "chạy được". Mỗi tính năng
+phải tính tới việc nó chạy trên trang của người khác, khác tên miền, mà ta
+không kiểm soát. `PLAN.md` mục 14 ghi đầy đủ ràng buộc.
+
 ## Luật bất biến — vi phạm là bản đồ trắng mà mọi request vẫn xanh
 
 - **Không bao giờ gọi `map.setStyle()`.** Nó reset toàn bộ source và layer, tức
@@ -130,6 +135,17 @@ Trang demo cố tình **không** có nghiệp vụ: không đọc dữ liệu th
   dựng lại ô không cần mạng. Xoá được, chạy lại script là tải lại.
   `data/ve-tinh-tam/` (374 MB) là ảnh ghép trung gian, xoá ngay sau khi dựng
   xong cũng được.
+- **CORS hỏng thì `curl` không phát hiện được.** Trình duyệt ở trang nhúng
+  từ chối, còn máy chủ vẫn trả 200 kèm đúng ảnh. Hai cái đã dính thật: header
+  `Access-Control-Allow-Origin` bị TRÙNG (nginx thêm một, TileServer GL thêm
+  một — trùng là trình duyệt chặn), và preflight `OPTIONS` trả 405 (pmtiles.js
+  gửi header `Range` nên trình duyệt hỏi trước). Kiểm bằng
+  `curl -H "Origin: https://x.vn"` rồi **đếm số header CORS phải đúng bằng 1**,
+  và `curl -X OPTIONS` phải ra 204.
+- **`add_header` của nginx KHÔNG cộng dồn.** Location nào tự khai `add_header`
+  là mất sạch header của mức `server`. Nên mỗi location phục vụ dữ liệu vẫn
+  phải tự khai CORS, đừng xoá vì thấy mức server đã có. Và `add_header` không
+  đặt được bên trong `if` ở mức server — nginx không khởi động nổi.
 - **Đổi ô nền thì phải XOÁ cache của nginx.** Ô raster cache 7 ngày
   (`proxy_cache_valid 200 7d`). Đổi `vietnam.pmtiles` mà quên xoá cache thì cả
   tuần sau người dùng vẫn xem bản đồ cũ, trong khi mọi bước đều báo thành

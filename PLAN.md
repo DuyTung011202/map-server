@@ -494,6 +494,47 @@ tại: phần tự chủ chạy tiếp được trong lúc chờ trả lời.
 
 ---
 
+## 14. Nhúng vào trang web khác — ràng buộc chốt 16/11/2026
+
+**Đây là sản phẩm dùng thật, và mục đích chính là để TRANG KHÁC nhúng vào.**
+Không phải bản thử nghiệm. Mức "chạy được" không phải mức cần đạt.
+
+Nhúng vào trang lạ kéo theo một loạt ràng buộc mà bản demo nội bộ không có.
+Cái khó là **gần hết chúng đều hỏng âm thầm**: `curl` vẫn 200, ảnh vẫn đúng,
+nhưng trình duyệt ở trang nhúng lại từ chối — và không ai nhìn từ phía máy
+chủ mà thấy được.
+
+### 14.1 Đã sửa (16/11/2026)
+
+| Lỗi | Vì sao nguy |
+|---|---|
+| `/tiles/nen/` trả **hai** header `Access-Control-Allow-Origin` (nginx thêm một, TileServer GL thêm một) | Trình duyệt coi header CORS trùng là không hợp lệ và CHẶN. `curl` thấy 200 bình thường |
+| Preflight `OPTIONS` trả **405** | `pmtiles.js` đọc ô bằng header `Range`; `Range` không nằm trong danh sách header an toàn sẵn nên trình duyệt hỏi trước bằng `OPTIONS`. Bị 405 là nó bỏ luôn request thật → trang nhúng trắng bản đồ |
+| Không có endpoint sức khoẻ | Bên nhúng và bộ giám sát không có cách biết máy chủ sống mà không tải cả tệp ô. Nay có `/suc-khoe` |
+
+### 14.2 Còn phải làm
+
+| Việc | Vì sao |
+|---|---|
+| **HTTPS** | **Chặn cứng.** Trang nhúng chạy `https://` mà gọi ô qua `http://` thì trình duyệt chặn thẳng (mixed content) — không có cách nào lách. Điều này **phủ định mục 3 "Caddy và TLS: không cần"**: lý lẽ ở đó chỉ đúng khi máy chủ nằm sau nginx của E-Commune và không ai gọi trực tiếp. Nhúng vào trang lạ thì phải có tên miền và chứng chỉ thật |
+| Hợp đồng URL ổn định + đánh phiên bản | Đổi đường dẫn là mọi trang đã nhúng gãy cùng lúc, mà ta không biết ai đang nhúng |
+| Trang nhúng `/nhung/` nhận tham số URL | Cho bên chỉ cần một `<iframe>`, không muốn viết JS |
+| Đoạn mã nhúng cho MapLibre **và Leaflet** | Leaflet không đọc được style vector → phải có đường riêng kèm lớp chủ quyền, chính là ca Zalo Mini App ở mục 4 |
+| Ghi công không gỡ được | Giấy phép OpenMapTiles và Copernicus bắt buộc hiện thấy. Bên nhúng không được phép tắt |
+| Chống lạm dụng (giới hạn tần suất, hoặc danh sách nguồn cho phép) | Traffic đến từ nguồn lạ. Đây chính là cách tỉnh bị OSM chặn IP ở [MAP-004], chỉ đảo vai |
+| TileJSON cho bên nhúng dò | Cách chuẩn để công cụ khác tự nhận zoom, bounds, ghi công |
+| Tài liệu công khai | Không có thì mỗi bên nhúng một kiểu, và lúc đổi gì cũng không báo được ai |
+
+### 14.3 Luật
+
+**Mỗi trang nhúng là một nơi có thể hiện bản đồ thiếu lớp chủ quyền.** Mục 4
+viết khi mới có hai client; giờ số client là không giới hạn và ta không kiểm
+soát được chúng. Vì vậy lớp chủ quyền **phải** đi kèm dữ liệu — nằm trong
+style, nằm trong đoạn mã nhúng, nằm trong trang `/nhung/` — chứ không phải
+là thứ bên nhúng tự thêm.
+
+---
+
 ## 13. Việc dọn tài liệu
 
 - Tệp này chưa được git theo dõi. Kho này cũng chưa được git theo dõi — đáng
