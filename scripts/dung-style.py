@@ -43,6 +43,11 @@ if hasattr(sys.stdout, "reconfigure"):
 # Nguồn ô: pmtiles:// để thư viện PMTiles bắt lấy và đọc bằng HTTP range
 # request. Không cần tile server, chỉ cần một tệp tĩnh.
 NGUON_O = "pmtiles:///tiles/vietnam.pmtiles"
+# Phải khớp maxzoom thật của data/tiles/vietnam.pmtiles. Sai số này là bản đồ
+# trắng ở zoom cao mà không một dòng lỗi — xem chú thích trong dung().
+MAXZOOM_O = 14
+NGUON_THE_GIOI = "pmtiles:///tiles/the-gioi.pmtiles"
+NGUON_THE_GIOI_MAY = "pmtiles://{the-gioi}"
 GLYPH = "/vendor/font/{fontstack}/{range}.pbf"
 SPRITE = "/vendor/sprite/sprite"
 
@@ -92,6 +97,60 @@ def lop_chu_quyen(du: dict | None) -> list[dict]:
     ]
 
 
+def lop_the_gioi() -> list[dict]:
+    """Nền thế giới ở zoom thấp: đất, ranh giới quốc gia, tên nước.
+
+    Chèn NGAY TRÊN `background` và dưới mọi lớp Việt Nam, nên ở nơi có dữ
+    liệu Việt Nam thì lớp Việt Nam vẽ đè lên — không ai thấy lớp này. Nó chỉ
+    hiện ra ở chỗ trước đây trống trơn.
+
+    `maxzoom: 7` vì `the-gioi.pmtiles` chỉ dựng tới z6; để MapLibre phóng to
+    thêm một bậc cho mượt rồi thôi, chứ không kéo lên z14 làm nhoè.
+    """
+    return [
+        {
+            "id": "the-gioi-dat",
+            "type": "background",
+            "maxzoom": 7,
+            # Hơi khác màu nền để phân biệt được đất với biển khi zoom xa.
+            "paint": {"background-color": "#f2ece3"},
+        },
+        {
+            "id": "the-gioi-nuoc",
+            "type": "fill",
+            "source": "the-gioi",
+            "source-layer": "water",
+            "maxzoom": 7,
+            "paint": {"fill-color": "#aad3f0"},
+        },
+        {
+            "id": "the-gioi-ranh-gioi",
+            "type": "line",
+            "source": "the-gioi",
+            "source-layer": "boundary",
+            "maxzoom": 7,
+            "filter": ["<=", ["get", "admin_level"], 2],
+            "paint": {"line-color": "#9a9a9a", "line-width": 0.8,
+                      "line-dasharray": [3, 2]},
+        },
+        {
+            "id": "the-gioi-ten-nuoc",
+            "type": "symbol",
+            "source": "the-gioi",
+            "source-layer": "place",
+            "maxzoom": 7,
+            "filter": ["==", ["get", "class"], "country"],
+            "layout": {
+                "text-field": ["coalesce", ["get", "name:vi"], ["get", "name"]],
+                "text-font": ["Noto Sans Regular"],
+                "text-size": 11,
+            },
+            "paint": {"text-color": "#7a7268", "text-halo-color": "#ffffff",
+                      "text-halo-width": 1.2},
+        },
+    ]
+
+
 def dung(goc: dict, chu_quyen: dict | None,
          nguon_o: str = NGUON_O, glyph: str = GLYPH, sprite: str = SPRITE) -> dict:
     s = json.loads(json.dumps(goc))  # không sửa vào bản gốc
@@ -104,7 +163,19 @@ def dung(goc: dict, chu_quyen: dict | None,
     # Planetiler xuất đúng schema đó nên chỉ cần đổi chỗ lấy dữ liệu.
     for ten, ng in s.get("sources", {}).items():
         if ng.get("type") == "vector":
-            s["sources"][ten] = {"type": "vector", "url": nguon_o}
+            # Khai THẲNG maxzoom thay vì để MapLibre đợi TileJSON của giao
+            # thức pmtiles trả về. Thiếu nó thì bản đồ TRẮNG TRƠN từ z16 trở
+            # lên: MapLibre không biết nguồn dừng ở đâu nên không phóng to ô
+            # z14 ra, và không báo lỗi gì cả.
+            s["sources"][ten] = {"type": "vector", "url": nguon_o,
+                                 "minzoom": 0, "maxzoom": MAXZOOM_O}
+
+    # Nền thế giới: chèn NGAY SAU `background`, tức dưới mọi lớp Việt Nam.
+    # Thứ tự quan trọng — đặt lên trên thì nó che mất bản đồ chi tiết.
+    nguon_tg = NGUON_THE_GIOI_MAY if nguon_o == NGUON_O_MAY else NGUON_THE_GIOI
+    s["sources"]["the-gioi"] = {"type": "vector", "url": nguon_tg}
+    vi_tri = 1 if s["layers"] and s["layers"][0].get("type") == "background" else 0
+    s["layers"] = s["layers"][:vi_tri] + lop_the_gioi() + s["layers"][vi_tri:]
 
     if chu_quyen is not None:
         s["sources"]["chu-quyen"] = {"type": "geojson", "data": chu_quyen}
@@ -149,7 +220,17 @@ def tu_kiem_tra() -> int:
     kd(gia["glyphs"].startswith("https://"), "không sửa vào style gốc")
 
     # Không có dữ liệu chủ quyền thì KHÔNG được âm thầm sinh style trống lớp.
-    kd(len(s["layers"]) == 1, "thiếu dữ liệu chủ quyền thì không bịa lớp ra")
+    ids = [l["id"] for l in s["layers"]]
+    kd("chu-quyen-vung" not in ids, "thiếu dữ liệu chủ quyền thì không bịa lớp ra")
+
+    # Nền thế giới phải nằm NGAY SAU background và TRƯỚC mọi lớp Việt Nam.
+    # Đặt nhầm lên trên là nó che cả bản đồ chi tiết bằng một mảng màu.
+    kd(ids[0] == "nen" and ids[1] == "the-gioi-dat",
+       "nền thế giới chèn ngay sau background")
+    kd(all(l.get("maxzoom") == 7 for l in s["layers"] if l["id"].startswith("the-gioi")),
+       "lớp thế giới chỉ sống tới z7, không đè lên bản đồ chi tiết")
+    kd(s["sources"]["the-gioi"]["url"].startswith("pmtiles://"),
+       "nguồn thế giới trỏ vào tệp PMTiles của mình")
 
     cq = {
         "type": "FeatureCollection",

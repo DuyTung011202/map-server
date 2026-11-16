@@ -26,13 +26,14 @@ cả tuần sau người dùng vẫn xem bản đồ cũ, trong khi mọi thứ 
 công. Xoá cache là một bước BẮT BUỘC của việc đổi, không phải việc dọn dẹp.
 """
 
-import struct
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+from pmtiles_chung import doc_header, mo_ta
 
 GOC = Path(__file__).resolve().parent.parent
 TILES = GOC / "data" / "tiles"
@@ -55,35 +56,6 @@ TI_LE_TOI_THIEU = 0.80
 
 
 # ------------------------------------------------------------ đọc PMTiles
-def doc_header(duong: Path) -> dict:
-    """Đọc 127 byte đầu của PMTiles v3.
-
-    Bố cục lấy từ đặc tả v3 và đã đối chiếu với tệp thật đang chạy.
-    """
-    with duong.open("rb") as f:
-        d = f.read(127)
-    if len(d) < 127 or d[:7] != b"PMTiles":
-        raise ValueError(f"{duong.name}: không phải tệp PMTiles")
-    if d[7] != 3:
-        raise ValueError(f"{duong.name}: PMTiles phiên bản {d[7]}, cần 3")
-    b = struct.unpack_from("<iiii", d, 102)
-    return {
-        "so_o": struct.unpack_from("<Q", d, 72)[0],
-        "so_muc": struct.unpack_from("<Q", d, 80)[0],
-        "kieu_o": d[99],
-        "minzoom": d[100],
-        "maxzoom": d[101],
-        "bounds": [v / 1e7 for v in b],
-        "kich_thuoc": duong.stat().st_size,
-    }
-
-
-def mo_ta(h: dict) -> str:
-    return (f"{h['kich_thuoc'] / 1e6:.0f} MB · {h['so_o']:,} ô · "
-            f"z{h['minzoom']}–{h['maxzoom']} · "
-            f"bounds {', '.join(f'{v:.2f}' for v in h['bounds'])}")
-
-
 def kiem_header(h: dict, cu: dict | None) -> list[str]:
     """Trả danh sách lý do KHÔNG được đem ra phục vụ. Rỗng là đạt."""
     loi = []

@@ -266,6 +266,12 @@
       maxPitch: 75,
       attributionControl: false,
     });
+    // Đưa map ra ngoài closure. Hai lý do, cả hai đều thật:
+    //   - gỡ lỗi: không có nó thì không hỏi được MapLibre đang nghĩ khung
+    //     nhìn rộng bao nhiêu, mà đó là thứ sai thì bản đồ trống một mảng.
+    //   - máy chủ này để TRANG KHÁC nhúng; trang nhúng cần chạm tới map.
+    window.BANDO = map;
+
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
     map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
     map.on('error', function (e) {
