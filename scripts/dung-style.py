@@ -50,7 +50,7 @@ NGUON_O = "pmtiles:///tiles/vietnam.pmtiles"
 MAXZOOM_O = 16
 NGUON_THE_GIOI = "pmtiles:///tiles/the-gioi.pmtiles"
 # Phải khớp MAXZOOM trong scripts/dung-o-the-gioi.py.
-MAXZOOM_THE_GIOI = 6
+MAXZOOM_THE_GIOI = 8
 NGUON_THE_GIOI_MAY = "pmtiles://{the-gioi}"
 GLYPH = "/vendor/font/{fontstack}/{range}.pbf"
 SPRITE = "/vendor/sprite/sprite"
@@ -297,7 +297,7 @@ def lop_the_gioi() -> list[dict]:
         {
             "id": "the-gioi-dat",
             "type": "background",
-            "maxzoom": 7,
+            "maxzoom": 9,
             # Hơi khác màu nền để phân biệt được đất với biển khi zoom xa.
             "paint": {"background-color": "#f2ece3"},
         },
@@ -306,7 +306,7 @@ def lop_the_gioi() -> list[dict]:
             "type": "fill",
             "source": "the-gioi",
             "source-layer": "water",
-            "maxzoom": 7,
+            "maxzoom": 9,
             # Phải TRÙNG màu lớp `water` của style gốc (hsl(210,67%,85%)).
             # Lệch một chút là hiện ra khung chữ nhật quanh Việt Nam ở zoom
             # thấp — đúng biên của vietnam.pmtiles, trông như lỗi dữ liệu.
@@ -317,7 +317,7 @@ def lop_the_gioi() -> list[dict]:
             "type": "line",
             "source": "the-gioi",
             "source-layer": "boundary",
-            "maxzoom": 7,
+            "maxzoom": 9,
             "filter": ["<=", ["get", "admin_level"], 2],
             "paint": {"line-color": "#9a9a9a", "line-width": 0.8,
                       "line-dasharray": [3, 2]},
@@ -330,7 +330,7 @@ def lop_the_gioi() -> list[dict]:
             "id": "viet-nam-noi-bat",
             "type": "fill",
             "source": "viet-nam",
-            "maxzoom": 7,
+            "maxzoom": 9,
             "paint": {"fill-color": "#e8f0e0", "fill-outline-color": "#b9c9ab"},
         },
         # Nhãn tên nước lấy từ Natural Earth (cột name_vi), KHÔNG lấy từ ô
@@ -340,7 +340,7 @@ def lop_the_gioi() -> list[dict]:
             "id": "the-gioi-ten-nuoc",
             "type": "symbol",
             "source": "ten-nuoc",
-            "maxzoom": 7,
+            "maxzoom": 9,
             "layout": {
                 "text-field": ["get", "ten"],
                 "text-font": ["Noto Sans Regular"],
@@ -495,8 +495,11 @@ def tu_kiem_tra() -> int:
     # Đặt nhầm lên trên là nó che cả bản đồ chi tiết bằng một mảng màu.
     kd(ids[0] == "nen" and ids[1] == "the-gioi-dat",
        "nền thế giới chèn ngay sau background")
-    kd(all(l.get("maxzoom") == 7 for l in s["layers"] if l["id"].startswith("the-gioi")),
-       "lớp thế giới chỉ sống tới z7, không đè lên bản đồ chi tiết")
+    # Lớp thế giới phải CHẾT trước khi bản đồ chi tiết lên tiếng, không thì nó
+    # tô đè một mảng màu lên Việt Nam. Ngưỡng bám theo maxzoom của nguồn.
+    kd(all(l.get("maxzoom") == MAXZOOM_THE_GIOI + 1
+           for l in s["layers"] if l["id"].startswith("the-gioi")),
+       f"lớp thế giới chỉ sống tới z{MAXZOOM_THE_GIOI + 1}, không đè bản đồ chi tiết")
     kd(s["sources"]["the-gioi"]["url"].startswith("pmtiles://"),
        "nguồn thế giới trỏ vào tệp PMTiles của mình")
 

@@ -30,7 +30,15 @@
       }
       if (ct.indexOf('image/') === 0 ||
           ct.indexOf('application/x-protobuf') === 0 ||
-          ct.indexOf('application/octet-stream') === 0) {
+          ct.indexOf('application/octet-stream') === 0 ||
+          // Máy chủ này phát cả JSON, không chỉ ô: style, phamvi.json, dữ
+          // liệu chủ quyền, TileJSON. Thiếu dòng này thì cả ba endpoint đó
+          // bị xếp "kiểu lạ" — một cảnh báo oan ngay trên bảng mà người ta
+          // nhìn vào để tin máy chủ chạy đúng.
+          ct.indexOf('application/json') === 0 ||
+          ct.indexOf('application/geo+json') === 0 ||
+          // /suc-khoe trả text/plain. Chỉ text/HTML mới là bẫy SPA fallback.
+          ct.indexOf('text/plain') === 0) {
         return { muc: 'ok', nhan: status + ' ' + ct };
       }
       if (!ct) return { muc: 'canh-bao', nhan: status + ' nhưng không có Content-Type' };
@@ -93,6 +101,12 @@
       '206 octet-stream là ok — PMTiles đọc bằng Range');
     khangDinh(phanLoaiPhanHoi(206, 'text/html').muc === 'loi',
       '206 kèm HTML vẫn là lỗi');
+    khangDinh(phanLoaiPhanHoi(200, 'application/json').muc === 'ok',
+      'JSON là ok — style, phamvi, chủ quyền đều là JSON');
+    khangDinh(phanLoaiPhanHoi(200, 'text/plain; charset=utf-8').muc === 'ok',
+      'text/plain là ok — endpoint sức khoẻ');
+    khangDinh(phanLoaiPhanHoi(200, 'text/html').muc === 'loi',
+      'text/html vẫn phải là lỗi, đừng nới lỏng cùng với text/plain');
 
     console.log(loi === 0 ? 'Tự kiểm tra: tất cả đúng' : 'Tự kiểm tra: ' + loi + ' lỗi');
   }

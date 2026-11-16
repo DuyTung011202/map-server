@@ -41,7 +41,14 @@ if hasattr(sys.stdout, "reconfigure"):
 # -85..85 chứ không phải -90..90: ngoài khoảng đó phép chiếu Web Mercator
 # giãn ra vô tận, không có ô nào.
 BOUNDS = "-180,-85,180,85"
-MAXZOOM = 6
+# z8 chứ không phải z6: phóng to ra ngoài biên giới Việt Nam ở z7–8 là chuyện
+# thường (xem biên Lào, Campuchia, hay Biển Đông), mà dừng ở z6 thì chỗ đó
+# trống trơn. Cả thế giới tới z8 là 87.381 ô — chịu được thoải mái.
+#
+# Vẫn KHÔNG dựng sâu hơn: lớp nước là toàn cầu và đại dương chiếm 70% bề mặt,
+# nên số ô nhân 4 mỗi bậc. Tới z14 là 4^14 ~ 268 triệu mục thư mục ô, bất khả
+# thi — đó là ngưỡng thật, không phải thận trọng thừa.
+MAXZOOM = 8
 RAM = "4g"
 
 
