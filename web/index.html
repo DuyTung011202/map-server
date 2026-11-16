@@ -20,6 +20,40 @@
   html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; }
   #bando { position: absolute; inset: 0; }
 
+  /* --- tìm nhanh --- */
+  #tim {
+    position: absolute; top: 12px; left: 334px; z-index: 3;
+    width: 340px; max-width: calc(100% - 358px);
+  }
+  #tim-o {
+    width: 100%; padding: 9px 12px; font: inherit;
+    color: var(--chu); background: var(--nen-mo);
+    border: 1px solid var(--vien); border-radius: 8px;
+    backdrop-filter: blur(8px);
+  }
+  #tim-o::placeholder { color: var(--chu-mo); }
+  #tim-nhom { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  #tim-nhom button {
+    padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
+    color: var(--chu); background: var(--nen-mo);
+    border: 1px solid var(--vien); border-radius: 999px;
+  }
+  #tim-nhom button[aria-pressed="true"] { background: #2d79c7; border-color: #2d79c7; }
+  #tim-ket-qua {
+    margin-top: 8px; max-height: 46vh; overflow-y: auto;
+    background: var(--nen-mo); border: 1px solid var(--vien); border-radius: 8px;
+    backdrop-filter: blur(8px);
+  }
+  #tim-ket-qua:empty { display: none; }
+  #tim-ket-qua button {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    padding: 8px 12px; font: inherit; color: var(--chu);
+    background: none; border: 0; border-bottom: 1px solid var(--vien);
+  }
+  #tim-ket-qua button:hover { background: rgba(255, 255, 255, .06); }
+  #tim-ket-qua .lop { display: block; font-size: 12px; color: var(--chu-mo); }
+  #tim-ghi-chu { padding: 8px 12px; font-size: 12px; color: var(--chu-mo); }
+
   #bang {
     position: absolute; top: 12px; left: 12px; z-index: 2;
     width: 310px; max-height: calc(100% - 24px); overflow-y: auto;
@@ -80,6 +114,13 @@
 
 <div id="bando"></div>
 
+<div id="tim">
+  <input id="tim-o" type="search" autocomplete="off"
+         placeholder="Tìm điểm trong vùng đang xem…">
+  <div id="tim-nhom"></div>
+  <div id="tim-ket-qua"></div>
+</div>
+
 <section id="bang">
   <h1>Máy chủ bản đồ
     <small>Trang demo — không có dữ liệu nghiệp vụ</small>
@@ -121,6 +162,7 @@
 <script src="vendor/pmtiles.js"></script>
 <script src="cauhinh.js"></script>
 <script src="kiem-o.js"></script>
+<script src="tim-kiem.js"></script>
 <script>
 (function () {
   'use strict';
@@ -315,6 +357,7 @@
       });
     });
 
+    noiTimKiem();
     noiCongTac(pv);
     moTaPhamVi(pv);
     dungChuGiai(pv);
@@ -373,6 +416,86 @@
       muc: duoiCung ? 'ok' : 'canh-bao',
       nhan: lop.length + ' lớp' + (duoiCung ? ' ở trên cùng' : ' NHƯNG bị lớp khác đè'),
     });
+  }
+
+  // ---------------------------------------------------------- tìm nhanh
+  // Tìm trong dữ liệu POI của chính ô vector, KHÔNG phải geocoder: chỉ thấy
+  // những gì MapLibre đã tải, tức là vùng đang xem. Gõ tên một chỗ ở tỉnh
+  // khác thì không ra, và đó là đúng. Geocoder thật là Photon, Phase 6.
+  var nhomDangChon = null;
+  var danhDau = null;
+
+  function noiTimKiem() {
+    var o = document.getElementById('tim-o');
+    var hopNhom = document.getElementById('tim-nhom');
+
+    TIMKIEM.NHOM.forEach(function (n) {
+      var b = document.createElement('button');
+      b.textContent = n.ten;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', function () {
+        nhomDangChon = nhomDangChon === n.ma ? null : n.ma;
+        hopNhom.querySelectorAll('button').forEach(function (x) {
+          x.setAttribute('aria-pressed', String(x === b && nhomDangChon === n.ma));
+        });
+        chayTim();
+      });
+      hopNhom.appendChild(b);
+    });
+
+    var hen = null;
+    o.addEventListener('input', function () {
+      clearTimeout(hen);
+      hen = setTimeout(chayTim, 180);
+    });
+
+    // Kéo bản đồ thì kết quả cũ không còn đúng vùng nữa.
+    map.on('moveend', function () {
+      if (o.value.trim() || nhomDangChon) chayTim();
+    });
+  }
+
+  function chayTim() {
+    var o = document.getElementById('tim-o');
+    var hop = document.getElementById('tim-ket-qua');
+    var tuKhoa = o.value.trim();
+    hop.innerHTML = '';
+
+    if (!tuKhoa && !nhomDangChon) return;
+
+    var ds = TIMKIEM.timTrongKhungNhin(map, tuKhoa, nhomDangChon, 20);
+    if (!ds.length) {
+      var p = document.createElement('p');
+      p.id = 'tim-ghi-chu';
+      p.textContent = 'Không có điểm nào khớp trong vùng đang xem. ' +
+        'Thử phóng to hoặc di chuyển bản đồ — chỉ tìm trong dữ liệu đã tải.';
+      hop.appendChild(p);
+      return;
+    }
+
+    ds.forEach(function (d) {
+      var b = document.createElement('button');
+      b.innerHTML = '';
+      b.appendChild(document.createTextNode(d.ten));
+      var s = document.createElement('span');
+      s.className = 'lop';
+      s.textContent = d.lop || 'địa điểm';
+      b.appendChild(s);
+      b.addEventListener('click', function () { bayToi(d); });
+      hop.appendChild(b);
+    });
+  }
+
+  function bayToi(d) {
+    if (danhDau) danhDau.remove();
+    // Dùng Marker chứ không thêm lớp vào style: thêm lớp là phải tự lo nó
+    // nằm dưới lớp chủ quyền, mà việc đó không có lý do gì phải gánh ở đây.
+    danhDau = new maplibregl.Marker({ color: '#e5534b' })
+      .setLngLat(d.toaDo)
+      .setPopup(new maplibregl.Popup({ offset: 24 }).setText(d.ten))
+      .addTo(map);
+    map.easeTo({ center: d.toaDo, zoom: Math.max(map.getZoom(), 16), duration: 700 });
+    danhDau.togglePopup();
   }
 
   // ------------------------------------------------------ công tắc lớp phủ

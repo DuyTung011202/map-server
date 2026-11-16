@@ -42,7 +42,7 @@ python scripts/capnhat-osm.py     --self-check  # bắt được tệp PMTiles h
 python scripts/dung-o-the-gioi.py --self-check  # bắt được tệp quên --bounds, maxzoom quá sâu
 python scripts/dung-ten-nuoc.py   --self-check  # đọc WKB, tên nước tiếng Việt
 python scripts/qgis-inventory.py --self-check
-http://localhost:8080/?self-check            # assert của kiem-o.js, kết quả ở console
+http://localhost:8080/?self-check            # assert của kiem-o.js và tim-kiem.js, ở console
 ```
 
 Build ô nền đường phố (cần `data/planetiler.jar`, đã có trong `data/`):
