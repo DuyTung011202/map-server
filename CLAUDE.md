@@ -83,6 +83,27 @@ Ba quyết định định hình mọi thứ:
    giải độ dốc ở `web/phamvi.json`. Mở rộng vùng ô địa hình thì không phải sửa
    frontend. `index.html` không được ghi cứng URL nào.
 
+Phần web tách thành tệp rời, **không có bước build** — trình duyệt nạp
+thẳng từng tệp, `git clone` + `docker compose up -d` là chạy:
+
+| Tệp | Việc |
+|---|---|
+| `index.html` | chỉ còn cấu trúc, 75 dòng |
+| `giao-dien.css` | toàn bộ CSS |
+| `cauhinh.js` | hằng số: URL nguồn ô, vị trí mở đầu, ghi công |
+| `kiem-o.js` | phân loại phản hồi HTTP của một ô |
+| `tim-kiem.js` | lõi tìm kiếm: bỏ dấu, khớp tên, lọc, sắp xếp |
+| `trang-thai.js` | bảng trạng thái nguồn ô, cảnh báo chủ quyền |
+| `tim-nhanh.js` | giao diện tìm: ô gõ, nút nhóm, danh sách |
+| `ban-do.js` | dựng map, công tắc lớp phủ — nạp SAU cùng |
+
+Thứ tự thẻ `<script>` trong `index.html` có ý nghĩa, đừng đảo.
+
+**Không dùng Vue/React.** Ba lý do, ghi lại để khỏi bàn lại: máy chủ nội bộ
+không có DNS nên thêm bước build là thêm chỗ hỏng; trang này để TRANG KHÁC
+nhúng, framework của ta sẽ cãi nhau với framework của họ; và MapLibre là thư
+viện mệnh lệnh, gắn vào vdom chỉ sinh ra một tầng đồng bộ thừa.
+
 Trang demo cố tình **không** có nghiệp vụ: không đọc dữ liệu theo xã, không
 đăng nhập, không vẽ/sửa. Nó là **bộ kiểm tra chạy được** của máy chủ.
 
