@@ -24,16 +24,32 @@ echo "Tải thư viện PMTiles"
 curl -fsSL "https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js" -o "$DICH/pmtiles.js"
 
 # --- Glyph cho nhãn ---
-# Chỉ lấy các dải thật sự cần, không lôi cả bộ font về:
-#   0-255     Latin cơ bản
-#   256-511   Latin mở rộng A (ă, đ, ơ, ư)
-#   512-767   Latin mở rộng B
-#   768-1023  dấu kết hợp
-#   7680-7935 Latin mở rộng bổ sung — ĐÂY là dải chứa hầu hết chữ tiếng Việt
-#             có dấu (ạ, ầ, ể, ộ, ỹ...). Thiếu dải này là nhãn tiếng Việt vỡ.
-#   8192-8447 dấu câu chung
+# Lấy ĐỦ 256 dải (0–65535), không chọn lọc nữa.
+#
+# Trước đây chỉ lấy 6 dải "thật sự cần" cho tiếng Việt. Hỏng thật: ở zoom cao,
+# OSM có nhãn chứa ký tự ngoài 6 dải đó (tên tiếng Hàn, tiếng Trung của cơ sở
+# nước ngoài), và TileServer GL gặp dải thiếu thì **trả HTTP 500 cho cả ô** —
+# không phải chỉ mất chữ. Ô nền biến mất hoàn toàn từ z16.
+#
+#   ERROR: Font not found: /data/fonts/Noto Sans Italic/49152-49407.pbf
+#
+# Dải nào không có ký tự thì máy chủ trả tệp rỗng hợp lệ, nên lấy hết là an
+# toàn. Dải quan trọng nhất cho tiếng Việt vẫn là 7680–7935 (ạ, ầ, ể, ộ, ỹ...).
+# Lấy MỌI dải trước khối CJK: U+0000–U+2FFF, tức 48 dải. Gồm Latin, dấu
+# tiếng Việt, Hy Lạp, Kirin, dấu câu, mũi tên, ký hiệu toán, dạng số.
+#
+# Không lấy từ U+3000 trở lên (Hán, Hàn, Nhật): mỗi dải CJK nặng ~180 KB, lấy
+# đủ 256 dải là vendor phình từ 2.8 MB lên ~60 MB. Thay vào đó style ép nhãn
+# dùng `name:vi` rồi `name:latin`, KHÔNG dùng `name` thô — xem
+# `uu_tien_tieng_viet` trong dung-style.py — nên không ký tự CJK nào tới được
+# bộ vẽ.
+#
+# Vì sao không lấy ít hơn nữa: trước đây chỉ lấy 6 dải, và ở z17 gặp nhãn có
+# ký tự ở dải 8448-8703 (dạng số, ký hiệu) -> TileServer GL trả 500 cho CẢ Ô.
+# Dải trống thì máy chủ trả tệp nhỏ hợp lệ, nên lấy dư không hại gì.
 NGUON_FONT="https://demotiles.maplibre.org/font"
-DAI="0-255 256-511 512-767 768-1023 7680-7935 8192-8447"
+DAI=""
+for i in $(seq 0 47); do DAI="$DAI $((i * 256))-$((i * 256 + 255))"; done
 
 # Kiểm từng tệp tải về. Máy chủ hỏng hay trả trang lỗi HTML kèm mã 200 — tải
 # xuống thì curl báo thành công, nhưng MapLibre nhận HTML thay vì glyph và chỉ

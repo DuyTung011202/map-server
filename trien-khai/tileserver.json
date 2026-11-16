@@ -17,6 +17,7 @@
     }
   },
   "data": {
-    "vietnam": { "pmtiles": "vietnam.pmtiles" }
+    "vietnam": { "pmtiles": "vietnam.pmtiles" },
+    "the-gioi": { "pmtiles": "the-gioi.pmtiles" }
   }
 }

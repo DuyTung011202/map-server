@@ -97,6 +97,40 @@ def lop_chu_quyen(du: dict | None) -> list[dict]:
     ]
 
 
+# KHÔNG có `["get", "name"]` ở cuối, và đó là chủ ý. `name` thô có thể là chữ
+# Hán ("三沙市"), mà một ký tự ngoài dải glyph đã tải là TileServer GL trả 500
+# cho cả ô. Đã đo trên dữ liệu thật: 1039 nhãn có tên, 0 nhãn thiếu
+# `name:latin` — nên bỏ `name` thô không mất gì.
+TEN_VIET = ["coalesce", ["get", "name:vi"], ["get", "name:latin"]]
+
+
+def uu_tien_tieng_viet(s: dict) -> int:
+    """Mọi nhãn lấy tên tiếng Việt trước, và BỎ HẲN `{name:nonlatin}`.
+
+    Hai lý do, lý do thứ hai mới là lý do chính:
+
+    1. Style gốc dùng `{name:latin}\\n{name:nonlatin}` ở 16 lớp. Phần
+       `nonlatin` kéo theo chữ Hán, Hàn, Nhật — và TileServer GL gặp dải
+       glyph thiếu thì trả HTTP 500 cho CẢ Ô, không phải chỉ mất chữ:
+           ERROR: Font not found: .../Noto Sans Italic/49152-49407.pbf
+       Lấy đủ 256 dải glyph thì vendor phình từ 2.8 MB lên ~60 MB. Bỏ
+       nonlatin thì không cần dải nào ngoài Latin.
+
+    2. Ô nền OSM ghi tên Trung Quốc ở Biển Đông ("三沙市 Sansha"). Hiện
+       `{name:nonlatin}` nghĩa là in đúng cái tên đó lên bản đồ. Ép tên tiếng
+       Việt là hàng phòng thủ thứ hai, sau lớp chủ quyền. Xem CLAUDE.md.
+
+    Trả về số lớp đã sửa.
+    """
+    dem = 0
+    for l in s.get("layers", []):
+        tf = l.get("layout", {}).get("text-field")
+        if isinstance(tf, str) and "name" in tf:
+            l["layout"]["text-field"] = json.loads(json.dumps(TEN_VIET))
+            dem += 1
+    return dem
+
+
 def lop_the_gioi() -> list[dict]:
     """Nền thế giới ở zoom thấp: đất, ranh giới quốc gia, tên nước.
 
@@ -170,6 +204,8 @@ def dung(goc: dict, chu_quyen: dict | None,
             s["sources"][ten] = {"type": "vector", "url": nguon_o,
                                  "minzoom": 0, "maxzoom": MAXZOOM_O}
 
+    uu_tien_tieng_viet(s)
+
     # Nền thế giới: chèn NGAY SAU `background`, tức dưới mọi lớp Việt Nam.
     # Thứ tự quan trọng — đặt lên trên thì nó che mất bản đồ chi tiết.
     nguon_tg = NGUON_THE_GIOI_MAY if nguon_o == NGUON_O_MAY else NGUON_THE_GIOI
@@ -222,6 +258,22 @@ def tu_kiem_tra() -> int:
     # Không có dữ liệu chủ quyền thì KHÔNG được âm thầm sinh style trống lớp.
     ids = [l["id"] for l in s["layers"]]
     kd("chu-quyen-vung" not in ids, "thiếu dữ liệu chủ quyền thì không bịa lớp ra")
+
+    # Nhãn: không được còn `nonlatin` ở bất cứ đâu. Còn một chỗ là TileServer
+    # GL có thể 500 cả ô, và bản đồ có thể in tên Trung Quốc ở Biển Đông.
+    van_ban_nhan = json.dumps([l.get("layout", {}).get("text-field")
+                               for l in s["layers"]], ensure_ascii=False)
+    kd("nonlatin" not in van_ban_nhan, "không còn {name:nonlatin} ở nhãn nào")
+
+    gia2 = {"version": 8, "sources": {}, "layers": [
+        {"id": "a", "type": "symbol", "layout": {"text-field": "{name:latin}\n{name:nonlatin}"}},
+        {"id": "b", "type": "symbol", "layout": {"text-field": "{ref}"}},
+    ]}
+    so = uu_tien_tieng_viet(gia2)
+    kd(so == 1, "chỉ sửa nhãn tên, không đụng nhãn {ref} của biển số đường")
+    kd(gia2["layers"][0]["layout"]["text-field"][1][1] == "name:vi",
+       "nhãn ưu tiên name:vi trước")
+    kd(gia2["layers"][1]["layout"]["text-field"] == "{ref}", "{ref} giữ nguyên")
 
     # Nền thế giới phải nằm NGAY SAU background và TRƯỚC mọi lớp Việt Nam.
     # Đặt nhầm lên trên là nó che cả bản đồ chi tiết bằng một mảng màu.
