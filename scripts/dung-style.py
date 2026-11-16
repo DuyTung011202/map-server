@@ -171,6 +171,33 @@ def lam_nhat(mau: str) -> str:
     return "#%02x%02x%02x" % tuple(round(v + (255 - v) * 0.78) for v in (r, g, b))
 
 
+def bo_hoa_van_song(s: dict) -> int:
+    """Bỏ lớp lát hoa văn `wave` lên mặt nước của style gốc.
+
+    Không phải chuyện thẩm mỹ — nó tạo ra một LỖI NHÌN THẤY ĐƯỢC. Hoa văn chỉ
+    tồn tại trong phạm vi `vietnam.pmtiles` (tới 114.64°Đ); biển ngoài vùng do
+    nền thế giới vẽ thì phẳng. Kết quả là một vệt dọc thẳng tắp giữa Biển
+    Đông, đúng biên bản trích — người xem đọc ra là lỗi dữ liệu.
+
+    Bỏ hoa văn thì hai nguồn nước nhìn như một. Giữ hoa văn thì phải dựng ô
+    cả thế giới ở mọi zoom, điều mà dung-o-the-gioi.py đã giải thích là bất
+    khả thi.
+    """
+    truoc = len(s["layers"])
+    s["layers"] = [l for l in s["layers"]
+                   if "pattern" not in json.dumps(l.get("paint", {}))
+                   or l.get("source-layer") != "water"]
+
+    # Cùng lý do, nhẹ hơn: `water-offset` vẽ một bản sao mặt nước đậm hơn,
+    # dịch 2px, để tạo bóng viền bờ biển. Ở mép dữ liệu nó thành một vạch dọc
+    # thẳng tắp. Không bỏ hẳn vì bóng bờ biển đẹp thật — chỉ tắt ở zoom thấp,
+    # nơi nền thế giới đang vẽ cạnh nó.
+    for l in s["layers"]:
+        if l.get("id") == "water-offset":
+            l["minzoom"] = 7
+    return truoc - len(s["layers"])
+
+
 def lop_poi() -> list[dict]:
     """Badge tròn + icon + tên bên dưới, thay cho ba lớp poi-level của style gốc.
 
@@ -347,6 +374,7 @@ def dung(goc: dict, chu_quyen: dict | None,
 
     uu_tien_tieng_viet(s)
     thay_lop_poi(s)
+    bo_hoa_van_song(s)
 
     # Nền thế giới: chèn NGAY SAU `background`, tức dưới mọi lớp Việt Nam.
     # Thứ tự quan trọng — đặt lên trên thì nó che mất bản đồ chi tiết.
@@ -434,6 +462,18 @@ def tu_kiem_tra() -> int:
        "POI nằm dưới lớp chủ quyền") if "chu-quyen-vung" in ten_lop else None
     kd(lam_nhat("#d9353a") != "#d9353a" and lam_nhat("#ffffff") == "#ffffff",
        "làm nhạt màu đúng hướng, trắng thì giữ trắng")
+
+    # Hoa văn sóng: còn một lớp là hiện vệt dọc đúng biên vietnam.pmtiles.
+    kd(not any("pattern" in json.dumps(l.get("paint", {}))
+               and l.get("source-layer") == "water" for l in s["layers"]),
+       "không còn lớp hoa văn lát lên mặt nước")
+    gia4 = {"layers": [
+        {"id": "water-pattern", "paint": {"fill-pattern": "wave"}, "source-layer": "water"},
+        {"id": "water", "paint": {"fill-color": "#aaa"}, "source-layer": "water"},
+        {"id": "nha", "paint": {"fill-pattern": "x"}, "source-layer": "building"},
+    ]}
+    kd(bo_hoa_van_song(gia4) == 1 and [l["id"] for l in gia4["layers"]] == ["water", "nha"],
+       "chỉ bỏ hoa văn trên NƯỚC, không đụng hoa văn lớp khác")
 
     # Nhãn: không được còn `nonlatin` ở bất cứ đâu. Còn một chỗ là TileServer
     # GL có thể 500 cả ô, và bản đồ có thể in tên Trung Quốc ở Biển Đông.
