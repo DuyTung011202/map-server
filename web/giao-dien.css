@@ -1,105 +1,142 @@
 /* Giao diện trang demo. Tách khỏi index.html để trang chỉ còn cấu trúc.
-   Không có bước build: trình duyệt nạp thẳng tệp này. */
+   Không có bước build: trình duyệt nạp thẳng tệp này.
 
-  :root {
-    --nen: #15181d;
-    --nen-mo: rgba(21, 24, 29, .92);
-    --chu: #e8eaed;
-    --chu-mo: #9aa0a6;
-    --vien: #2f343b;
-    --ok: #4caf7d;
-    --canh-bao: #e0a33e;
-    --loi: #e5534b;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; }
-  #bando { position: absolute; inset: 0; }
+   Bảng màu SÁNG, theo lối Google Maps / Goong: nền trắng, chữ xám đậm,
+   phân tách bằng BÓNG ĐỔ chứ không bằng viền. Nền bản đồ của ta là style
+   OSM Bright — sáng và nhạt — nên panel tối nổi cộm lên như một mảng đen,
+   đó là lý do đổi.
 
-  /* --- tìm nhanh --- */
-  #tim {
-    position: absolute; top: 12px; left: 334px; z-index: 3;
-    width: 340px; max-width: calc(100% - 358px);
-  }
-  #tim-o {
-    width: 100%; padding: 9px 12px; font: inherit;
-    color: var(--chu); background: var(--nen-mo);
-    border: 1px solid var(--vien); border-radius: 8px;
-    backdrop-filter: blur(8px);
-  }
-  #tim-o::placeholder { color: var(--chu-mo); }
-  #tim-nhom { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  #tim-nhom button {
-    padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
-    color: var(--chu); background: var(--nen-mo);
-    border: 1px solid var(--vien); border-radius: 999px;
-  }
-  #tim-nhom button[aria-pressed="true"] { background: #2d79c7; border-color: #2d79c7; }
-  #tim-ket-qua {
-    margin-top: 8px; max-height: 46vh; overflow-y: auto;
-    background: var(--nen-mo); border: 1px solid var(--vien); border-radius: 8px;
-    backdrop-filter: blur(8px);
-  }
-  #tim-ket-qua:empty { display: none; }
-  #tim-ket-qua button {
-    display: block; width: 100%; text-align: left; cursor: pointer;
-    padding: 8px 12px; font: inherit; color: var(--chu);
-    background: none; border: 0; border-bottom: 1px solid var(--vien);
-  }
-  #tim-ket-qua button:hover { background: rgba(255, 255, 255, .06); }
-  #tim-ket-qua .lop { display: block; font-size: 12px; color: var(--chu-mo); }
-  #tim-ghi-chu { padding: 8px 12px; font-size: 12px; color: var(--chu-mo); }
+   Mọi màu khai ở :root. Đổi chủ đề thì sửa đúng khối đó, đừng rải màu ghi
+   cứng xuống dưới. */
 
-  #bang {
-    position: absolute; top: 12px; left: 12px; z-index: 2;
-    width: 310px; max-height: calc(100% - 24px); overflow-y: auto;
-    background: var(--nen-mo); color: var(--chu);
-    border: 1px solid var(--vien); border-radius: 8px;
-    backdrop-filter: blur(8px);
-  }
-  #bang h1 { margin: 0; padding: 14px 16px 12px; font-size: 15px; font-weight: 600;
-             border-bottom: 1px solid var(--vien); }
-  #bang h1 small { display: block; margin-top: 3px; font-size: 12px;
-                   font-weight: 400; color: var(--chu-mo); }
-  .nhom { padding: 12px 16px; border-bottom: 1px solid var(--vien); }
-  .nhom:last-child { border-bottom: 0; }
-  .nhom > h2 { margin: 0 0 9px; font-size: 11px; font-weight: 600;
-               letter-spacing: .08em; text-transform: uppercase; color: var(--chu-mo); }
-  label.dong { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
-  label.dong input { margin: 0; accent-color: #5b8def; }
-  .ghi-chu { margin: 2px 0 8px 24px; font-size: 12px; color: var(--chu-mo); }
-  input[type=range] { width: 100%; accent-color: #5b8def; }
+:root {
+  --nen: #ffffff;
+  --nen-mo: rgba(255, 255, 255, .97);
+  --chu: #202124;
+  --chu-mo: #5f6368;
+  --vien: #e3e5e8;
+  --ok: #1e8e3e;
+  --canh-bao: #e37400;
+  --loi: #d93025;
+  --nhan-chon: #1a73e8;
+  --chu-nguoc: #ffffff;
+  --nen-ri: #f1f3f4;          /* nền khi rê chuột */
+  --vien-o-mau: rgba(0, 0, 0, .18);
 
-  #canh-bao-chu-quyen {
-    display: none; margin: 0; padding: 11px 16px;
-    background: #41201d; border-bottom: 1px solid #6b2f2a;
-    font-size: 13px; color: #ffd9d5;
-  }
-  #canh-bao-chu-quyen strong { color: #fff; }
+  /* Cảnh báo thiếu lớp chủ quyền — cảnh báo quan trọng nhất của trang. */
+  --bao-nen: #fce8e6;
+  --bao-vien: #f3b8b2;
+  --bao-chu: #a50e0e;
+  --bao-chu-dam: #8c0d0d;
 
-  /* Chú giải độ dốc dựng từ phamvi.json, không ghi cứng màu trong trang. */
-  #chu-giai { display: none; margin: 4px 0 6px 24px; }
-  #chu-giai .bac { display: flex; align-items: center; gap: 7px;
-                   font-size: 12px; color: var(--chu-mo); padding: 1px 0; }
-  #chu-giai .o-mau { flex: none; width: 13px; height: 13px; border-radius: 2px;
-                     border: 1px solid rgba(255, 255, 255, .2); }
+  --ghi-cong-nen: rgba(255, 255, 255, .88);
+  --ghi-cong-chu: #3c4043;
 
-  .muc { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; font-size: 13px; }
-  .muc .den { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%;
-              background: var(--chu-mo); }
-  .muc.ok .den { background: var(--ok); }
-  .muc.canh-bao .den { background: var(--canh-bao); }
-  .muc.loi .den { background: var(--loi); }
-  .muc .noi-dung { min-width: 0; }
-  .muc .ten { display: block; }
-  .muc .nhan { display: block; font-size: 12px; color: var(--chu-mo); word-break: break-word; }
-  .muc.loi .nhan { color: #f0a9a4; }
+  /* Bóng hai tầng: tầng gần cho độ nổi, tầng xa cho chiều sâu. Một tầng
+     duy nhất trông phẳng và rẻ tiền. */
+  --bong: 0 1px 2px rgba(60, 64, 67, .3), 0 2px 6px 2px rgba(60, 64, 67, .15);
+}
 
-  #ghi-cong {
-    position: absolute; right: 0; bottom: 0; z-index: 2;
-    padding: 4px 8px; font-size: 11px; line-height: 1.45;
-    background: rgba(255, 255, 255, .82); color: #222;
-    border-top-left-radius: 4px; max-width: 70vw;
-  }
-  @media (max-width: 640px) {
-    #bang { width: auto; right: 12px; max-height: 50%; }
-  }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; }
+#bando { position: absolute; inset: 0; }
+
+/* --- tìm nhanh --- */
+#tim {
+  position: absolute; top: 12px; left: 334px; z-index: 3;
+  width: 340px; max-width: calc(100% - 358px);
+}
+#tim-o {
+  width: 100%; padding: 11px 14px; font: inherit;
+  color: var(--chu); background: var(--nen);
+  border: 0; border-radius: 8px; box-shadow: var(--bong);
+}
+#tim-o:focus { outline: 2px solid var(--nhan-chon); outline-offset: -2px; }
+#tim-o::placeholder { color: var(--chu-mo); }
+
+#tim-nhom { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#tim-nhom button {
+  padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer;
+  color: var(--chu); background: var(--nen);
+  border: 0; border-radius: 999px; box-shadow: var(--bong);
+}
+#tim-nhom button:hover { background: var(--nen-ri); }
+#tim-nhom button[aria-pressed="true"] {
+  background: var(--nhan-chon); color: var(--chu-nguoc);
+}
+
+#tim-ket-qua {
+  margin-top: 8px; max-height: 46vh; overflow-y: auto;
+  background: var(--nen); border-radius: 8px; box-shadow: var(--bong);
+}
+#tim-ket-qua:empty { display: none; }
+#tim-ket-qua button {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  padding: 9px 14px; font: inherit; color: var(--chu);
+  background: none; border: 0; border-bottom: 1px solid var(--vien);
+}
+#tim-ket-qua button:last-child { border-bottom: 0; }
+#tim-ket-qua button:hover { background: var(--nen-ri); }
+#tim-ket-qua .lop { display: block; font-size: 12px; color: var(--chu-mo); }
+#tim-ghi-chu { margin: 0; padding: 10px 14px; font-size: 12px; color: var(--chu-mo); }
+
+/* --- bảng điều khiển --- */
+#bang {
+  position: absolute; top: 12px; left: 12px; z-index: 2;
+  width: 310px; max-height: calc(100% - 24px); overflow-y: auto;
+  background: var(--nen-mo); color: var(--chu);
+  border-radius: 8px; box-shadow: var(--bong);
+}
+#bang h1 { margin: 0; padding: 14px 16px 12px; font-size: 15px; font-weight: 600;
+           border-bottom: 1px solid var(--vien); }
+#bang h1 small { display: block; margin-top: 3px; font-size: 12px;
+                 font-weight: 400; color: var(--chu-mo); }
+.nhom { padding: 12px 16px; border-bottom: 1px solid var(--vien); }
+.nhom:last-child { border-bottom: 0; }
+.nhom > h2 { margin: 0 0 9px; font-size: 11px; font-weight: 600;
+             letter-spacing: .08em; text-transform: uppercase; color: var(--chu-mo); }
+label.dong { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+label.dong input { margin: 0; accent-color: var(--nhan-chon); }
+.ghi-chu { margin: 2px 0 8px 24px; font-size: 12px; color: var(--chu-mo); }
+input[type=range] { width: 100%; accent-color: var(--nhan-chon); }
+
+/* Cảnh báo thiếu lớp chủ quyền — phải đập vào mắt, kể cả trên nền sáng.
+   Đây là cảnh báo quan trọng nhất của trang, xem PLAN.md mục 4. */
+#canh-bao-chu-quyen {
+  display: none; margin: 0; padding: 11px 16px;
+  background: var(--bao-nen); border-bottom: 1px solid var(--bao-vien);
+  font-size: 13px; color: var(--bao-chu);
+}
+#canh-bao-chu-quyen strong { color: var(--bao-chu-dam); }
+
+/* Chú giải độ dốc dựng từ phamvi.json, không ghi cứng màu trong trang. */
+#chu-giai { display: none; margin: 4px 0 6px 24px; }
+#chu-giai .bac { display: flex; align-items: center; gap: 7px;
+                 font-size: 12px; color: var(--chu-mo); padding: 1px 0; }
+#chu-giai .o-mau { flex: none; width: 13px; height: 13px; border-radius: 2px;
+                   border: 1px solid var(--vien-o-mau); }
+
+.muc { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; font-size: 13px; }
+.muc .den { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%;
+            background: var(--chu-mo); }
+.muc.ok .den { background: var(--ok); }
+.muc.canh-bao .den { background: var(--canh-bao); }
+.muc.loi .den { background: var(--loi); }
+.muc .noi-dung { min-width: 0; }
+.muc .ten { display: block; }
+.muc .nhan { display: block; font-size: 12px; color: var(--chu-mo); word-break: break-word; }
+.muc.loi .nhan { color: var(--loi); }
+
+#ghi-cong {
+  position: absolute; right: 0; bottom: 0; z-index: 2;
+  padding: 4px 8px; font-size: 11px; line-height: 1.45;
+  background: var(--ghi-cong-nen); color: var(--ghi-cong-chu);
+  border-top-left-radius: 4px; max-width: 70vw;
+}
+
+@media (max-width: 640px) {
+  #bang { width: auto; right: 12px; max-height: 50%; }
+  /* Ô tìm phải xuống dòng dưới bảng, không thì hai thứ chồng lên nhau. */
+  #tim { left: 12px; right: 12px; width: auto; max-width: none; top: auto; bottom: 12px; }
+  #tim-ket-qua { max-height: 32vh; }
+}
