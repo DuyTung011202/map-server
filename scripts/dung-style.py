@@ -33,6 +33,8 @@ from pathlib import Path
 
 GOC = Path(__file__).resolve().parent.parent
 STYLE_GOC = GOC / "web" / "style-goc.json"
+TEN_NUOC = GOC / "web" / "the-gioi" / "ten-nuoc.json"
+VIET_NAM = GOC / "web" / "the-gioi" / "viet-nam.json"
 STYLE_RA = GOC / "web" / "style" / "nen-pho.json"
 STYLE_MAY_RA = GOC / "web" / "style" / "nen-pho-may.json"
 CHU_QUYEN = GOC / "web" / "chu-quyen" / "chu-quyen-dao.json"
@@ -47,6 +49,8 @@ NGUON_O = "pmtiles:///tiles/vietnam.pmtiles"
 # trắng ở zoom cao mà không một dòng lỗi — xem chú thích trong dung().
 MAXZOOM_O = 14
 NGUON_THE_GIOI = "pmtiles:///tiles/the-gioi.pmtiles"
+# Phải khớp MAXZOOM trong scripts/dung-o-the-gioi.py.
+MAXZOOM_THE_GIOI = 6
 NGUON_THE_GIOI_MAY = "pmtiles://{the-gioi}"
 GLYPH = "/vendor/font/{fontstack}/{range}.pbf"
 SPRITE = "/vendor/sprite/sprite"
@@ -155,7 +159,10 @@ def lop_the_gioi() -> list[dict]:
             "source": "the-gioi",
             "source-layer": "water",
             "maxzoom": 7,
-            "paint": {"fill-color": "#aad3f0"},
+            # Phải TRÙNG màu lớp `water` của style gốc (hsl(210,67%,85%)).
+            # Lệch một chút là hiện ra khung chữ nhật quanh Việt Nam ở zoom
+            # thấp — đúng biên của vietnam.pmtiles, trông như lỗi dữ liệu.
+            "paint": {"fill-color": "hsl(210, 67%, 85%)"},
         },
         {
             "id": "the-gioi-ranh-gioi",
@@ -167,20 +174,33 @@ def lop_the_gioi() -> list[dict]:
             "paint": {"line-color": "#9a9a9a", "line-width": 0.8,
                       "line-dasharray": [3, 2]},
         },
+        # Việt Nam tô khác màu hẳn các nước còn lại. Vùng lấy từ Natural
+        # Earth — KHÔNG gồm Hoàng Sa, Trường Sa, nên đây chỉ là màu nền đất
+        # liền, không phải tuyên bố ranh giới. Lớp chủ quyền ở cuối style vẫn
+        # là nguồn sự thật duy nhất về hai quần đảo.
+        {
+            "id": "viet-nam-noi-bat",
+            "type": "fill",
+            "source": "viet-nam",
+            "maxzoom": 7,
+            "paint": {"fill-color": "#e8f0e0", "fill-outline-color": "#b9c9ab"},
+        },
+        # Nhãn tên nước lấy từ Natural Earth (cột name_vi), KHÔNG lấy từ ô
+        # nền: mục `place` của the-gioi.pmtiles chỉ có đúng Việt Nam, vì
+        # Planetiler sinh nhãn địa danh từ OSM mà đầu vào OSM chỉ có Việt Nam.
         {
             "id": "the-gioi-ten-nuoc",
             "type": "symbol",
-            "source": "the-gioi",
-            "source-layer": "place",
+            "source": "ten-nuoc",
             "maxzoom": 7,
-            "filter": ["==", ["get", "class"], "country"],
             "layout": {
-                "text-field": ["coalesce", ["get", "name:vi"], ["get", "name"]],
+                "text-field": ["get", "ten"],
                 "text-font": ["Noto Sans Regular"],
-                "text-size": 11,
+                "text-size": ["interpolate", ["linear"], ["zoom"], 2, 10, 6, 13],
+                "text-max-width": 7,
             },
-            "paint": {"text-color": "#7a7268", "text-halo-color": "#ffffff",
-                      "text-halo-width": 1.2},
+            "paint": {"text-color": "#6f675d", "text-halo-color": "#ffffff",
+                      "text-halo-width": 1.4},
         },
     ]
 
@@ -209,9 +229,22 @@ def dung(goc: dict, chu_quyen: dict | None,
     # Nền thế giới: chèn NGAY SAU `background`, tức dưới mọi lớp Việt Nam.
     # Thứ tự quan trọng — đặt lên trên thì nó che mất bản đồ chi tiết.
     nguon_tg = NGUON_THE_GIOI_MAY if nguon_o == NGUON_O_MAY else NGUON_THE_GIOI
-    s["sources"]["the-gioi"] = {"type": "vector", "url": nguon_tg}
+    # Khai maxzoom thẳng, cùng lý do với nguồn Việt Nam ở trên.
+    s["sources"]["the-gioi"] = {"type": "vector", "url": nguon_tg,
+                                "minzoom": 0, "maxzoom": MAXZOOM_THE_GIOI}
+    # Hai tệp nhỏ nhúng thẳng, như dữ liệu chủ quyền: tên nước và vùng Việt
+    # Nam. Thiếu thì bỏ qua lớp dùng chúng chứ KHÔNG bịa ra — cùng luật với
+    # lớp chủ quyền.
+    for ten_nguon, duong in (("ten-nuoc", TEN_NUOC), ("viet-nam", VIET_NAM)):
+        if duong.is_file():
+            s["sources"][ten_nguon] = {
+                "type": "geojson",
+                "data": json.loads(duong.read_text("utf-8")),
+            }
+    co = set(s["sources"])
+    lop_tg = [l for l in lop_the_gioi() if l.get("source", "the-gioi") in co]
     vi_tri = 1 if s["layers"] and s["layers"][0].get("type") == "background" else 0
-    s["layers"] = s["layers"][:vi_tri] + lop_the_gioi() + s["layers"][vi_tri:]
+    s["layers"] = s["layers"][:vi_tri] + lop_tg + s["layers"][vi_tri:]
 
     if chu_quyen is not None:
         s["sources"]["chu-quyen"] = {"type": "geojson", "data": chu_quyen}
