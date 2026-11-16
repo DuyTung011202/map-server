@@ -1,0 +1,45 @@
+{
+  "phien_ban": 1,
+  "ma_hoa": "terrarium",
+  "bounds": [
+    105.5,
+    19.8,
+    106.7,
+    20.8
+  ],
+  "minzoom": 8,
+  "maxzoom": 12,
+  "nguon": "SRTM 1 arcsec (NASA/USGS, phạm vi công cộng) qua AWS Open Data — bộ skadi",
+  "moc_do_cao": "EGM96 (xấp xỉ mực nước biển)",
+  "ngay_dung": "2026-11-16",
+  "do_doc": {
+    "lop": [
+      {
+        "tu": 8,
+        "den": 15,
+        "mau": "#f2d14b",
+        "nhan": "8–15°"
+      },
+      {
+        "tu": 15,
+        "den": 25,
+        "mau": "#f39c34",
+        "nhan": "15–25°"
+      },
+      {
+        "tu": 25,
+        "den": 35,
+        "mau": "#e0452b",
+        "nhan": "25–35°"
+      },
+      {
+        "tu": 35,
+        "den": null,
+        "mau": "#8e1b1b",
+        "nhan": "≥ 35°"
+      }
+    ]
+  },
+  "vung": "Tỉnh Ninh Bình (sau sáp nhập 2025)",
+  "cao_nhat_m": 1667
+}

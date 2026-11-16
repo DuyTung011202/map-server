@@ -1,0 +1,15 @@
+# Kho này phát triển trên Windows nhưng CHẠY trên Linux (container nginx,
+# TileServer GL, GDAL). Tệp .sh hay nginx.conf mang CRLF sang Linux là hỏng:
+# shell báo "bad interpreter: /bin/bash^M", nginx báo lỗi cú pháp ở dòng trông
+# hoàn toàn bình thường. Ép LF cho mọi tệp văn bản.
+* text=auto eol=lf
+
+# Nhị phân: đừng đụng vào byte nào. Ô font .pbf và sprite .png mà bị "sửa"
+# dòng là MapLibre không nạp được mà cũng không nói vì sao.
+*.pbf binary
+*.png binary
+*.jar binary
+*.gz  binary
+*.zip binary
+*.pmtiles binary
+*.tif binary

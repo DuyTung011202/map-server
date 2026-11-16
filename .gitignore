@@ -1,0 +1,27 @@
+# Dữ liệu: nguồn tải về và ô dựng ra. Tất cả đều TÁI TẠO ĐƯỢC bằng script
+# trong scripts/, và tổng cộng vài GB — không đưa vào git.
+#
+#   data/osm/        nguồn Planetiler tải  -> capnhat-osm.py
+#   data/tiles/      ô nền, địa hình, độ dốc, vệ tinh
+#   data/dem/        SRTM .hgt.gz          -> dung-o-dia-hinh.py
+#   data/s2/         ảnh Sentinel-2        -> dung-o-ve-tinh.py
+#   data/ve-tinh-tam/ ảnh ghép trung gian
+#   data/planetiler.jar
+data/
+
+# Style do máy chủ DỰNG RA, không phải mã nguồn. Nguồn của nó là
+# web/style-goc.json + web/chu-quyen/chu-quyen-dao.json.
+#
+# Cố tình không commit: commit bản dựng ra thì sớm muộn nó lệch với nguồn, mà
+# thứ lệch ở đây là LỚP CHỦ QUYỀN. Thà thiếu tệp và dựng lại một lệnh, còn hơn
+# có một tệp trông đúng mà nội dung cũ.
+#
+#   python scripts/dung-style.py     <- chạy trước `docker compose up -d`
+web/style/
+
+# web/vendor/ thì NGƯỢC LẠI: có commit. Máy chủ nội bộ không có DNS ra ngoài
+# nên bản sao kho phải tự mang đủ MapLibre, PMTiles, font, sprite. 2.8 MB.
+
+__pycache__/
+*.pyc
+.DS_Store

@@ -1,0 +1,22 @@
+{
+  "options": {
+    "paths": {
+      "root": "/data",
+      "fonts": "fonts",
+      "styles": "styles",
+      "pmtiles": "pmtiles"
+    },
+    "maxScaleFactor": 2
+  },
+  "styles": {
+    "nen-pho": {
+      "style": "nen-pho-may.json",
+      "serve_rendered": true,
+      "serve_data": false,
+      "tilejson": { "format": "png" }
+    }
+  },
+  "data": {
+    "vietnam": { "pmtiles": "vietnam.pmtiles" }
+  }
+}

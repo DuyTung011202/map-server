@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Máy chủ bản đồ — trang demo</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<style>
+  :root {
+    --nen: #15181d;
+    --nen-mo: rgba(21, 24, 29, .92);
+    --chu: #e8eaed;
+    --chu-mo: #9aa0a6;
+    --vien: #2f343b;
+    --ok: #4caf7d;
+    --canh-bao: #e0a33e;
+    --loi: #e5534b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; }
+  #bando { position: absolute; inset: 0; }
+
+  #bang {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    width: 310px; max-height: calc(100% - 24px); overflow-y: auto;
+    background: var(--nen-mo); color: var(--chu);
+    border: 1px solid var(--vien); border-radius: 8px;
+    backdrop-filter: blur(8px);
+  }
+  #bang h1 { margin: 0; padding: 14px 16px 12px; font-size: 15px; font-weight: 600;
+             border-bottom: 1px solid var(--vien); }
+  #bang h1 small { display: block; margin-top: 3px; font-size: 12px;
+                   font-weight: 400; color: var(--chu-mo); }
+  .nhom { padding: 12px 16px; border-bottom: 1px solid var(--vien); }
+  .nhom:last-child { border-bottom: 0; }
+  .nhom > h2 { margin: 0 0 9px; font-size: 11px; font-weight: 600;
+               letter-spacing: .08em; text-transform: uppercase; color: var(--chu-mo); }
+  label.dong { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+  label.dong input { margin: 0; accent-color: #5b8def; }
+  .ghi-chu { margin: 2px 0 8px 24px; font-size: 12px; color: var(--chu-mo); }
+  input[type=range] { width: 100%; accent-color: #5b8def; }
+
+  #canh-bao-chu-quyen {
+    display: none; margin: 0; padding: 11px 16px;
+    background: #41201d; border-bottom: 1px solid #6b2f2a;
+    font-size: 13px; color: #ffd9d5;
+  }
+  #canh-bao-chu-quyen strong { color: #fff; }
+
+  /* Chú giải độ dốc dựng từ phamvi.json, không ghi cứng màu trong trang. */
+  #chu-giai { display: none; margin: 4px 0 6px 24px; }
+  #chu-giai .bac { display: flex; align-items: center; gap: 7px;
+                   font-size: 12px; color: var(--chu-mo); padding: 1px 0; }
+  #chu-giai .o-mau { flex: none; width: 13px; height: 13px; border-radius: 2px;
+                     border: 1px solid rgba(255, 255, 255, .2); }
+
+  .muc { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; font-size: 13px; }
+  .muc .den { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%;
+              background: var(--chu-mo); }
+  .muc.ok .den { background: var(--ok); }
+  .muc.canh-bao .den { background: var(--canh-bao); }
+  .muc.loi .den { background: var(--loi); }
+  .muc .noi-dung { min-width: 0; }
+  .muc .ten { display: block; }
+  .muc .nhan { display: block; font-size: 12px; color: var(--chu-mo); word-break: break-word; }
+  .muc.loi .nhan { color: #f0a9a4; }
+
+  #ghi-cong {
+    position: absolute; right: 0; bottom: 0; z-index: 2;
+    padding: 4px 8px; font-size: 11px; line-height: 1.45;
+    background: rgba(255, 255, 255, .82); color: #222;
+    border-top-left-radius: 4px; max-width: 70vw;
+  }
+  @media (max-width: 640px) {
+    #bang { width: auto; right: 12px; max-height: 50%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="bando"></div>
+
+<section id="bang">
+  <h1>Máy chủ bản đồ
+    <small>Trang demo — không có dữ liệu nghiệp vụ</small>
+  </h1>
+
+  <p id="canh-bao-chu-quyen"></p>
+
+  <div class="nhom">
+    <h2>Nền bản đồ</h2>
+    <label class="dong"><input type="radio" name="nen" value="nenPho" checked> Nền đường phố</label>
+    <label class="dong"><input type="radio" name="nen" value="veTinh"> Ảnh vệ tinh</label>
+  </div>
+
+  <div class="nhom">
+    <h2>Lớp phủ</h2>
+    <label class="dong"><input type="checkbox" id="bat-dia-hinh"> Địa hình 3D</label>
+    <p class="ghi-chu" id="ghi-chu-dia-hinh">Đang đọc phạm vi…</p>
+    <label class="dong"><input type="checkbox" id="bat-do-doc"> Lớp độ dốc</label>
+    <div id="chu-giai"></div>
+    <label class="dong" style="margin-top:4px">
+      <span style="color:var(--chu-mo);font-size:12px">Độ mờ lớp phủ</span>
+    </label>
+    <input type="range" id="do-mo" min="0" max="100" value="70">
+  </div>
+
+  <div class="nhom">
+    <h2>Trạng thái nguồn ô</h2>
+    <div id="trang-thai"></div>
+    <p class="ghi-chu" style="margin-left:0">
+      MapLibre coi ô 404 là ô rỗng và không báo lỗi, nên các nguồn được gọi thử
+      trực tiếp. Lần gọi thứ hai nên thấy <code>X-Tile-Cache: HIT</code>.
+    </p>
+  </div>
+</section>
+
+<div id="ghi-cong"></div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/pmtiles.js"></script>
+<script src="cauhinh.js"></script>
+<script src="kiem-o.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var C = window.CAUHINH;
+  var N = C.nguon;
+  var map = null;
+
+  // ---------------------------------------------------------- trạng thái
+  var bangTrangThai = document.getElementById('trang-thai');
+  var dongDaCo = {};
+
+  function datTrangThai(khoa, ten, kq) {
+    var el = dongDaCo[khoa];
+    if (!el) {
+      el = document.createElement('div');
+      bangTrangThai.appendChild(el);
+      dongDaCo[khoa] = el;
+    }
+    el.className = 'muc ' + kq.muc;
+    el.innerHTML =
+      '<span class="den"></span><span class="noi-dung">' +
+      '<span class="ten"></span><span class="nhan"></span></span>';
+    el.querySelector('.ten').textContent = ten;
+    el.querySelector('.nhan').textContent =
+      kq.nhan + (kq.cache ? ' · cache: ' + kq.cache : '');
+  }
+
+  // PMTiles: một tệp tĩnh, trình duyệt đọc từng lát bằng HTTP Range.
+  // Không cần tile server cho nền phố.
+  maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+
+  // Danh sách id các lớp thuộc nền phố, để bật/tắt cả cụm khi đổi nền.
+  var lopNenPho = [];
+
+  // ------------------------------------------------- tải trước rồi mới dựng
+  // Hai thứ phải có TRƯỚC khi tạo map:
+  //   - style nền phố: đặt lúc tạo map, không bao giờ setStyle (setStyle
+  //     reset toàn bộ source/layer, tức là xoá luôn lớp chủ quyền).
+  //   - phamvi.json: bounds và minzoom/maxzoom là thuộc tính của source,
+  //     gắn lúc tạo chứ không gắn được sau. Có bounds thì MapLibre không gọi
+  //     ô ngoài vùng, nên không sinh ra một rừng 404 không ai nhìn ra.
+  Promise.all([
+    tai(N.nenPho.style, 'Style nền phố', function (s) {
+      return 'v' + s.version + ' · ' + s.layers.length + ' lớp';
+    }),
+    tai(N.diaHinh.phamVi, 'Phạm vi ô địa hình', function (pv) {
+      return 'z' + pv.minzoom + '–' + pv.maxzoom + ' · ' + (pv.nguon || 'không rõ nguồn');
+    }),
+  ]).then(function (kq) { dungBanDo(kq[0], kq[1]); });
+
+  /** Tải một tệp JSON, báo trạng thái, trả null nếu hỏng thay vì ném. */
+  function tai(url, ten, moTa) {
+    return fetch(url, { cache: 'no-store' })
+      .then(function (r) {
+        var ct = (r.headers.get('content-type') || '').toLowerCase();
+        if (!r.ok) throw new Error('mã ' + r.status);
+        // Nginx để rơi vào SPA fallback thì trả index.html mã 200: chặn ở đây.
+        if (ct.indexOf('json') === -1) throw new Error('không phải JSON: ' + ct);
+        return r.json();
+      })
+      .then(function (du) {
+        datTrangThai(url, ten, { muc: 'ok', nhan: moTa(du) });
+        return du;
+      })
+      .catch(function (e) {
+        datTrangThai(url, ten, { muc: 'loi', nhan: e.message });
+        return null;
+      });
+  }
+
+  // ------------------------------------------------------------- bản đồ
+  function dungBanDo(nen, pv) {
+    var dh = { type: 'raster-dem', tiles: [N.diaHinh.mau], tileSize: 256,
+               encoding: (pv && pv.ma_hoa) || 'terrarium' };
+    var dd = { type: 'raster', tiles: [N.doDoc.mau], tileSize: 256 };
+    if (pv && Array.isArray(pv.bounds) && pv.bounds.length === 4) {
+      dh.bounds = dd.bounds = pv.bounds;
+    }
+    if (pv && typeof pv.minzoom === 'number') dh.minzoom = dd.minzoom = pv.minzoom;
+    if (pv && typeof pv.maxzoom === 'number') dh.maxzoom = dd.maxzoom = pv.maxzoom;
+
+    // Style nền phố là nền móng; vệ tinh, độ dốc, địa hình chèn thêm vào.
+    var style = nen || {
+      version: 8, sources: {}, layers: [],
+      glyphs: '/vendor/font/{fontstack}/{range}.pbf',
+    };
+    if (!nen) {
+      hienCanhBao('Không tải được style nền phố. Chạy ' +
+        '<code>python scripts/dung-style.py</code> rồi tải lại.');
+    }
+    lopNenPho = style.layers.map(function (l) { return l.id; });
+
+    // MapLibre đòi URL sprite phải TUYỆT ĐỐI khi style được đưa vào dạng đối
+    // tượng; '/vendor/sprite/sprite' bị từ chối và cả style không nạp được —
+    // bản đồ trắng trơn, lỗi chỉ nằm ở console.
+    //
+    // Style trên máy chủ cố tình giữ đường cùng gốc để dùng được ở nhiều
+    // origin. Ứng dụng nào đưa ĐƯỜNG DẪN style cho MapLibre (style: '<url>')
+    // thì MapLibre tự phân giải, không cần đoạn này. Trang demo phải tự tải
+    // style về để chèn thêm lớp địa hình nên mới phải tự đổi.
+    // Chỉ sprite. ⛔ Đừng đụng vào `glyphs`: new URL() mã hoá dấu ngoặc nhọn
+    // thành %7Bfontstack%7D và MapLibre báo "url must include a {fontstack}
+    // token". Đường cùng gốc của glyphs thì MapLibre chấp nhận.
+    if (style.sprite) style.sprite = new URL(style.sprite, location.href).href;
+
+    style.sources['ve-tinh'] = {
+      type: 'raster', tiles: [N.veTinh.mau], tileSize: 256,
+      maxzoom: N.veTinh.zoomToiDa || 17,
+    };
+    style.sources['do-doc'] = dd;
+    style.sources['dia-hinh'] = dh;
+
+    // Vệ tinh nằm DƯỚI cùng: bật nó thì tắt cả cụm lớp nền phố, nên không
+    // cần chen vào giữa. Chèn ở vị trí 0, ngay trên background.
+    style.layers.unshift({
+      id: 've-tinh', type: 'raster', source: 've-tinh',
+      layout: { visibility: 'none' },
+    });
+
+    // Lớp phủ chèn TRƯỚC lớp chủ quyền, không bao giờ lên trên nó.
+    var viTri = style.layers.findIndex(function (l) {
+      return l.id.indexOf('chu-quyen') === 0;
+    });
+    if (viTri < 0) viTri = style.layers.length;
+    style.layers.splice(viTri, 0,
+      { id: 'do-doc', type: 'raster', source: 'do-doc',
+        layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.7 } },
+      { id: 'bong-dia-hinh', type: 'hillshade', source: 'dia-hinh',
+        layout: { visibility: 'none' },
+        paint: {
+          'hillshade-exaggeration': 0.6,
+          'hillshade-shadow-color': '#473B24',
+          'hillshade-highlight-color': '#ffffff',
+          'hillshade-accent-color': '#888888',
+        } });
+
+    map = new maplibregl.Map({
+      container: 'bando',
+      style: style,
+      center: [C.tam.lon, C.tam.lat],
+      zoom: C.tam.zoom,
+      maxPitch: 75,
+      attributionControl: false,
+    });
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+    map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
+    map.on('error', function (e) {
+      // Để soi cho tiện, nhưng đừng trông vào: ô 404 không bao giờ tới đây.
+      console.warn('[MapLibre]', (e && e.error && e.error.message) || e);
+    });
+
+    // HTTP 200 chỉ nói "tệp có". Nó KHÔNG nói style và ô có khớp nhau không:
+    // sai tên source-layer, sai zoom, sai phạm vi đều cho ra bản đồ trắng mà
+    // mọi request vẫn xanh. Chỉ có đếm hình vẽ ra mới biết.
+    map.on('idle', function () {
+      var ds = map.queryRenderedFeatures();
+      var theoLop = {};
+      ds.forEach(function (f) {
+        var k = f.sourceLayer || f.source;
+        theoLop[k] = (theoLop[k] || 0) + 1;
+      });
+      var ten = Object.keys(theoLop).sort(function (a, b) {
+        return theoLop[b] - theoLop[a];
+      });
+
+      // Nền vệ tinh là ô RASTER: queryRenderedFeatures không đếm được nó, và
+      // bật nó thì cả cụm lớp vector tắt. Lúc đó 0 đối tượng là ĐÚNG, không
+      // phải style hỏng — báo đỏ ở đây là báo oan, mà trang này chính là chỗ
+      // người ta nhìn để tin máy chủ chạy đúng.
+      var dangVeTinh = map.getLayer('ve-tinh')
+        && map.getLayoutProperty('ve-tinh', 'visibility') === 'visible';
+      if (dangVeTinh) {
+        return datTrangThai('ve', 'Hình vẽ ra trong khung nhìn', {
+          muc: 'ok',
+          nhan: 'Nền vệ tinh (raster) đang bật — lớp vector tắt, không đếm được',
+        });
+      }
+
+      datTrangThai('ve', 'Hình vẽ ra trong khung nhìn', ds.length ? {
+        muc: 'ok',
+        nhan: ds.length + ' đối tượng · ' + ten.slice(0, 4).join(', '),
+      } : {
+        muc: 'loi',
+        nhan: 'KHÔNG có gì — ô về được nhưng style không khớp dữ liệu',
+      });
+    });
+
+    noiCongTac(pv);
+    moTaPhamVi(pv);
+    dungChuGiai(pv);
+    datGhiCong(pv);
+    kiemChuQuyen(nen);
+    kiemCacNguon();
+  }
+
+  // ----------------------------------------------------------- chủ quyền
+  // Luật của dự án: lớp chủ quyền Hoàng Sa, Trường Sa luôn bật trên mọi nền,
+  // không có công tắc tắt. Trang này KHÔNG tự vẽ đảo và KHÔNG tự đặt tên —
+  // dữ liệu chỉ đến từ endpoint của máy chủ. Thiếu thì phải kêu to, vì một
+  // bản đồ nền OSM không có lớp này là bản đồ sai.
+  function hienCanhBao(chiTiet) {
+    var el = document.getElementById('canh-bao-chu-quyen');
+    el.style.display = 'block';
+    el.innerHTML = '<strong>Chưa có lớp chủ quyền.</strong> ' + chiTiet;
+  }
+
+  // Trang KHÔNG tự thêm lớp chủ quyền. Lớp đó phải nằm sẵn trong style do
+  // máy chủ phát (scripts/dung-style.py), vì đó mới là thứ mọi ứng dụng khác
+  // dùng chung. Trang chỉ KIỂM xem style có đủ lớp không — đây chính là cổng
+  // kiểm tra thay cho việc so từng byte giữa N bản sao ở N ứng dụng.
+  function kiemChuQuyen(nen) {
+    if (!nen) return;  // style hỏng: đã cảnh báo ở chỗ khác
+
+    var lop = nen.layers.filter(function (l) {
+      return l.id.indexOf('chu-quyen') === 0;
+    });
+
+    if (!lop.length) {
+      hienCanhBao('Style <code>' + N.nenPho.style + '</code> không có lớp nào ' +
+        'tên <code>chu-quyen-*</code>. Ô nền OSM ghi sai tên và vẽ sai ranh ở ' +
+        'Hoàng Sa, Trường Sa — xem PLAN.md mục 4.');
+      return datTrangThai('chu-quyen', 'Lớp chủ quyền trong style',
+        { muc: 'loi', nhan: 'Không có — style chưa dùng được cho ứng dụng thật' });
+    }
+
+    // Có công tắc tắt là sai luật, kể cả khi đang bật.
+    var tatDuoc = lop.filter(function (l) {
+      return l.layout && 'visibility' in l.layout;
+    });
+    if (tatDuoc.length) {
+      return datTrangThai('chu-quyen', 'Lớp chủ quyền trong style', {
+        muc: 'loi',
+        nhan: 'Có công tắc tắt ở: ' + tatDuoc.map(function (l) { return l.id; }).join(', '),
+      });
+    }
+
+    // Phải nằm ở cuối, nếu không lớp nền vẽ đè lên.
+    var cuoi = nen.layers.length - 1;
+    var thapNhat = nen.layers.indexOf(lop[0]);
+    var duoiCung = thapNhat + lop.length - 1 === cuoi;
+
+    datTrangThai('chu-quyen', 'Lớp chủ quyền trong style', {
+      muc: duoiCung ? 'ok' : 'canh-bao',
+      nhan: lop.length + ' lớp' + (duoiCung ? ' ở trên cùng' : ' NHƯNG bị lớp khác đè'),
+    });
+  }
+
+  // ------------------------------------------------------ công tắc lớp phủ
+  function hien(idLop, bat) {
+    if (map && map.getLayer(idLop)) {
+      map.setLayoutProperty(idLop, 'visibility', bat ? 'visible' : 'none');
+    }
+  }
+
+  function noiCongTac(pv) {
+    // Đổi nền bằng bật/tắt visibility. KHÔNG dùng map.setStyle(): nó reset
+    // toàn bộ source và layer, tức là xoá luôn lớp chủ quyền.
+    document.querySelectorAll('input[name=nen]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var pho = r.value === 'nenPho';
+        // Nền phố là cả một cụm 129 lớp của style, không phải một lớp raster.
+        lopNenPho.forEach(function (id) { hien(id, pho); });
+        hien('ve-tinh', !pho);
+      });
+    });
+
+    document.getElementById('bat-dia-hinh').addEventListener('change', function () {
+      hien('bong-dia-hinh', this.checked);
+      map.setTerrain(this.checked ? { source: 'dia-hinh', exaggeration: 1.3 } : null);
+      if (this.checked) {
+        if (map.getPitch() < 30) map.easeTo({ pitch: 55, duration: 700 });
+        // Ô địa hình chỉ phủ một vùng. Ở ngoài vùng thì bật lên không thấy gì,
+        // nên kéo tầm nhìn về đúng vùng có dữ liệu.
+        if (pv && Array.isArray(pv.bounds) && !trongPhamVi(pv.bounds)) {
+          map.fitBounds([[pv.bounds[0], pv.bounds[1]], [pv.bounds[2], pv.bounds[3]]],
+            { padding: 40, duration: 900 });
+        }
+      }
+    });
+
+    document.getElementById('bat-do-doc').addEventListener('change', function () {
+      hien('do-doc', this.checked);
+      document.getElementById('chu-giai').style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('do-mo').addEventListener('input', function () {
+      var v = this.value / 100;
+      if (map.getLayer('do-doc')) map.setPaintProperty('do-doc', 'raster-opacity', v);
+      if (map.getLayer('bong-dia-hinh')) {
+        map.setPaintProperty('bong-dia-hinh', 'hillshade-exaggeration', v * 0.9);
+      }
+    });
+  }
+
+  function trongPhamVi(b) {
+    var c = map.getCenter();
+    return c.lng >= b[0] && c.lng <= b[2] && c.lat >= b[1] && c.lat <= b[3];
+  }
+
+  // ------------------------------------------------- mô tả, chú giải, ghi công
+  function moTaPhamVi(pv) {
+    var el = document.getElementById('ghi-chu-dia-hinh');
+    if (!pv) {
+      el.textContent = 'Không đọc được phamvi.json — không rõ vùng nào có dữ liệu.';
+      return;
+    }
+    var b = pv.bounds || [];
+    el.textContent =
+      (b.length === 4 ? b.map(function (v) { return (+v).toFixed(2); }).join(', ') + ' · ' : '') +
+      'z' + pv.minzoom + '–' + pv.maxzoom +
+      (pv.ngay_dung ? ' · dựng ' + pv.ngay_dung : '') +
+      (pv.moc_do_cao ? ' · mốc ' + pv.moc_do_cao : '');
+  }
+
+  function dungChuGiai(pv) {
+    var el = document.getElementById('chu-giai');
+    var bac = pv && pv.do_doc && pv.do_doc.lop;
+    if (!Array.isArray(bac)) return;
+    bac.forEach(function (b) {
+      var d = document.createElement('div');
+      d.className = 'bac';
+      var o = document.createElement('span');
+      o.className = 'o-mau';
+      o.style.background = b.mau;
+      var t = document.createElement('span');
+      t.textContent = b.nhan;
+      d.appendChild(o);
+      d.appendChild(t);
+      el.appendChild(d);
+    });
+  }
+
+  function datGhiCong(pv) {
+    var phan = [N.nenPho.ghiCong, N.veTinh.ghiCong];
+    // Ghi công địa hình lấy từ phamvi.json, không ghi cứng trong trang —
+    // đổi nguồn DEM thì không ai phải nhớ sửa chỗ này.
+    if (pv && pv.nguon) phan.push('Địa hình: ' + pv.nguon);
+    document.getElementById('ghi-cong').textContent =
+      phan.filter(Boolean).join(' · ');
+  }
+
+  // --------------------------------------------------------- kiểm nguồn ô
+  function kiemCacNguon() {
+    // Gọi thử hai lần: lần hai để xem cache của nginx có ăn không.
+    ['nenPho', 'veTinh', 'diaHinh', 'doDoc'].forEach(function (khoa) {
+      var n = N[khoa];
+      kiemMotNguon(n.mau, C.oKiemTra).then(function (kq) {
+        datTrangThai(khoa, n.ten, kq);
+        if (kq.muc !== 'ok') return null;
+        return kiemMotNguon(n.mau, C.oKiemTra).then(function (lan2) {
+          datTrangThai(khoa, n.ten, lan2);
+        });
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
